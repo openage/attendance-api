@@ -1,0 +1,2 @@
+{{#lt leave.days 1}}{{sender.name}} has applied leave for {{leave.leaveKind}} of {{date leave.date}} {{/lt}} {{#eq leave.days 1}}{{sender.name}} has applied leave for {{leave.leaveKind}} of {{date leave.date}} {{/eq}} {{#gt leave.days 1}}{{sender.name}}
+has applied leave for {{leave.leaveKind}} from {{date leave.date}} to {{date leave.toDate}}{{/gt}}. {{maxLeavesContent}}

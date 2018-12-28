@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        table,
+        th,
+        td {
+            border: 1px solid black;
+            border-collapse: collapse;
+        }
+    </style>
+</head>
+
+<body>
+    <div>Dear {{employee}},<br><br> Here is your attendance summary for <b>week -{{weekStart}} - {{weekEnd}}</b></div>
+    <div style="margin:20px;">
+        <table style="width:100%">
+            <tr>
+                <th><b>Date</b></th>
+                <th><b>Day</b></th>
+                <th><b>Check In</b></th>
+                <th><b>Check Out</b></th>
+                <th><b>Time Worked</b></th>
+                <th><b>Day Status</b></th>
+            </tr>{{#each summary}}
+            <tr>
+                <td style="text-align: center;"><b>{{attDate}}</b></td>
+                <td style="text-align: center;"><b>{{day}}</b></td>
+                <td style="text-align: center;"><b>{{checkIn}}</b></td>
+                <td style="text-align: center;"><b>{{checkOut}}</b></td>
+                <td style="text-align: center;"><b>{{timeWorked}}</b></td>
+                <td style="text-align: center;text-transform: capitalize;"><b>{{attendanceStatus dayStatus}}</b></td>
+            </tr>{{/each}}
+        </table>
+    </div>
+    <div>**This is a system generated email, please don't reply.<br> **For more updates from your organization go to <a href="https://goo.gl/CjqBV8">AquaHR</a><br><br>Regards,<br>Team AQUA<br></div>
+</body>
+
+</html>

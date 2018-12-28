@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        table,
+        th,
+        td {
+            border: 1px solid black;
+            border-collapse: collapse;
+        }
+    </style>
+</head>
+
+<body>
+    <div>Dear {{employee.name}},<br><br>Your Daily employee({{totalEmployees}}) Summary.
+    </div>
+    <div style="margin:20px;">
+        <table style="width:100%">
+            <tr>
+                <th><b>Name</b></th>
+                <th><b>Code</b></th>
+                <th><b>Phone</b></th>
+                <th><b>Date</b></th>
+                <th><b>CheckIn</b></th>
+                <th><b>CheckOut</b></th>
+                <th><b>Status</b></th>
+            </tr>{{#each attendances}}
+            <tr>
+                <td style="text-align: center;"><b>{{employee.name}}</b></td>
+                <td style="text-align: center;"><b>{{employee.code}}</b></td>
+                <td style="text-align: center;"><b>{{employee.phone}}</b></td>
+                <td style="text-align: center;"><b>{{date ofDate}}</b></td>
+                <td style="text-align: center;"><b>{{time checkIn}}</b></td>
+                <td style="text-align: center;"><b>{{time checkOut}}</b></td>
+                <td style="text-align: center;"><b>{{status}}</b></td>
+
+            </tr>{{/each}}
+        </table>
+    </div>
+    <div>**This is a system generated email, please don't reply.<br> **For more updates from your organization go to <a href="https://goo.gl/CjqBV8">AquaHR</a><br><br>Regards,<br>Team AQUA<br></div>
+</body>
+
+</html>

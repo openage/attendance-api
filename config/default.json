@@ -1,0 +1,55 @@
+{
+    "dbServer": {
+        "database": "attendance",
+        "host": "mongodb://localhost:27017/oa_attendance"
+    },
+    "webServer": {
+        "url": "http://localhost:3008",
+        "port": 3008
+    },
+    "queueServer": {
+        "disabled": true
+    },
+    "system": {
+        "name": "Open Age",
+        "emailId": "no_reply@openage.in"
+    },
+    "auth": {
+        "provider": "directory"
+    },
+    "storage": {
+        "provider": "drive"
+    },
+    "message": {
+        "provider": "send-it"
+    },
+    "location": {
+        "provider": "googleLocation"
+    },
+    "sync": {
+        "serviceVersion": "1"
+    },
+    "logger": {
+        "console": {
+            "level": "silly",
+            "handleExceptions": true,
+            "json": false,
+            "colorize": true
+        }
+    },
+    "providers": {
+        "googleLocation": {
+            "url": "https://maps.googleapis.com/maps/api/geocode/json",
+            "googleKey": "placeholder"
+        },
+        "directory": {
+            "url": "http://localhost:3001/api"
+        },
+        "send-it": {
+            "url": "http://localhost:3002/api"
+        },
+        "drive": {
+            "url": "http://localhost:3003/api"
+        }
+    }
+}

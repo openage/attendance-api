@@ -1,0 +1,202 @@
+{
+    // Use IntelliSense to learn about possible Node.js debug attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [{
+            "name": "api(dev)",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceRoot}/bin/app.js",
+            "stopOnEntry": false,
+            "args": [],
+            "cwd": "${workspaceRoot}",
+            "preLaunchTask": null,
+            "runtimeExecutable": null,
+            "runtimeArgs": [
+                "--nolazy"
+            ],
+            "env": {
+                "NODE_ENV": "dev"
+            },
+            "console": "internalConsole",
+            "sourceMaps": false,
+            "outputCapture": "std",
+            "outFiles": []
+        }, {
+            "name": "dual-api(dev)",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceRoot}/bin/app-supporter.js",
+            "stopOnEntry": false,
+            "args": [],
+            "cwd": "${workspaceRoot}",
+            "preLaunchTask": null,
+            "runtimeExecutable": null,
+            "runtimeArgs": [
+                "--nolazy"
+            ],
+            "env": {
+                "NODE_ENV": "dev"
+            },
+            "console": "internalConsole",
+            "sourceMaps": false,
+            "outputCapture": "std",
+            "outFiles": []
+        },{
+            "type": "node",
+            "request": "launch",
+            "name": "listener(dev)",
+            "program": "${workspaceRoot}/bin/queueListener.js",
+            "stopOnEntry": false,
+            "args": [],
+            "cwd": "${workspaceRoot}",
+            "preLaunchTask": null,
+            "runtimeExecutable": null,
+            "runtimeArgs": [
+                "--nolazy"
+            ],
+            "env": {
+                "NODE_ENV": "dev"
+            },
+            "console": "internalConsole",
+            "outputCapture": "std",
+            "sourceMaps": false,
+            "outFiles": []
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "cron(dev)",
+            "program": "${workspaceRoot}/bin/cron.js",
+            "stopOnEntry": false,
+            "args": [],
+            "cwd": "${workspaceRoot}",
+            "preLaunchTask": null,
+            "runtimeExecutable": null,
+            "runtimeArgs": [
+                "--nolazy"
+            ],
+            "env": {
+                "NODE_ENV": "dev"
+            },
+            "console": "internalConsole",
+            "outputCapture": "std",
+            "sourceMaps": false,
+            "outFiles": []
+        }, {
+            "name": "api(prod)",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceRoot}/bin/app.js",
+            "stopOnEntry": false,
+            "args": [],
+            "cwd": "${workspaceRoot}",
+            "preLaunchTask": null,
+            "runtimeExecutable": null,
+            "runtimeArgs": [
+                "--nolazy"
+            ],
+            "env": {
+                "NODE_ENV": "prod"
+            },
+            "console": "internalConsole",
+            "outputCapture": "std",
+            "sourceMaps": false,
+            "outFiles": []
+        },
+        {
+            "name": "dual-api(prod)",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceRoot}/bin/app-supporter.js",
+            "stopOnEntry": false,
+            "args": [],
+            "cwd": "${workspaceRoot}",
+            "preLaunchTask": null,
+            "runtimeExecutable": null,
+            "runtimeArgs": [
+                "--nolazy"
+            ],
+            "env": {
+                "NODE_ENV": "prod"
+            },
+            "console": "internalConsole",
+            "outputCapture": "std",
+            "sourceMaps": false,
+            "outFiles": []
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "cron(prod)",
+            "program": "${workspaceRoot}/bin/cron.js",
+            "stopOnEntry": false,
+            "args": [],
+            "cwd": "${workspaceRoot}",
+            "preLaunchTask": null,
+            "runtimeExecutable": null,
+            "runtimeArgs": [
+                "--nolazy"
+            ],
+            "env": {
+                "NODE_ENV": "prod"
+            },
+            "console": "internalConsole",
+            "outputCapture": "std",
+            "sourceMaps": false,
+            "outFiles": []
+        }, {
+            "type": "node",
+            "request": "launch",
+            "name": "listener(prod)",
+            "program": "${workspaceRoot}/bin/queueListener.js",
+            "stopOnEntry": false,
+            "args": [],
+            "cwd": "${workspaceRoot}",
+            "preLaunchTask": null,
+            "runtimeExecutable": null,
+            "runtimeArgs": [
+                "--nolazy"
+            ],
+            "env": {
+                "NODE_ENV": "prod"
+            },
+            "console": "internalConsole",
+            "outputCapture": "std",
+            "sourceMaps": false,
+            "outFiles": []
+        }, {
+            "name": "Run mocha",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceRoot}/node_modules/mocha/bin/_mocha",
+            "stopOnEntry": false,
+            "args": ["tests", "--recursive", "--no-timeouts"],
+            "cwd": "${workspaceRoot}",
+            "console": "internalConsole",
+            "runtimeExecutable": null,
+            "env": { "NODE_ENV": "test" }
+        }, {
+            "type": "node",
+            "request": "launch",
+            "name": "boot cli",
+            "program": "${workspaceRoot}/bin/cli.js",
+            "stopOnEntry": false,
+            "args": ["boot"],
+            "cwd": "${workspaceRoot}",
+            "preLaunchTask": null,
+            "runtimeExecutable": null,
+            "runtimeArgs": [
+                "--nolazy"
+            ],
+            "env": {
+                "NODE_ENV": "prod"
+            },
+            "console": "internalConsole",
+            "outputCapture": "std",
+            "sourceMaps": false,
+            "outFiles": []
+        },
+    ]
+}

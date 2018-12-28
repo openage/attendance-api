@@ -1,0 +1,12 @@
+{
+    "data": {
+        "major": 2,
+        "minor": 2,
+        "build": 0,
+        "date": "2017-11-05",
+        "changes": [
+            "fix me"
+        ]
+    },
+    "isSuccess": true
+}

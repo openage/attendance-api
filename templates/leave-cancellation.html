@@ -1,0 +1,1 @@
+{{#lt leave.days 1}}{{leave.employee.name}} has decided to cancel leave {{leave.leaveKind}} of {{date leave.date}} {{/lt}} {{#eq leave.days 1}}{{leave.employee.name}} has decided to cancel leave of {{date leave.date}} {{/eq}} {{#gt leave.days 1}}{{leave.employee.name}} has decided to cancel leaves. Duration {{date leave.date}} - {{date leave.toDate}}{{/gt}}
