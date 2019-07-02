@@ -35,7 +35,8 @@ exports.process = async (data, context, callback) => {
     const leaveType = await db.leaveType.findById(data.id)
 
     const employees = await db.employee.find({
-        organization: context.organization
+        organization: context.organization,
+        status: 'active'
     })
 
     await Promise.each(employees, async (employee) => {

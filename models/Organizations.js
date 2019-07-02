@@ -4,9 +4,13 @@ var mongoose = require('mongoose')
 
 var organization = new mongoose.Schema({
     name: String,
-    EmpDb_Org_id: Number,
+    EmpDb_Org_id: String,
+    owner: {
+        id: String
+    },
     code: { type: String, lowercase: true },
     externalUrl: String,
+    externalId: String,
     devicesVersion: String,
     activationKey: String, // uuid form
     lastSyncDate: Date,
@@ -17,6 +21,13 @@ var organization = new mongoose.Schema({
             'start', 'employees', 'devices', 'syncapp', 'alerts', 'complete'
         ],
         default: 'start'
+    },
+    status: {
+        type: String,
+        enum: [
+            'active', 'inactive'
+        ],
+        default: 'active'
     },
     devices: [{ type: mongoose.Schema.Types.ObjectId, ref: 'device' }],
     channels: [{
@@ -35,7 +46,8 @@ var organization = new mongoose.Schema({
         chat: { type: mongoose.Schema.Types.ObjectId, ref: 'channel' }
     },
 
-    created_At: { type: Date, default: Date.now }
+    created_At: { type: Date, default: Date.now },
+    timeStamp: { type: Date, default: Date.now }
 })
 
 organization.pre('save', function (next) {

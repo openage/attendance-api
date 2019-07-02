@@ -64,6 +64,11 @@ module.exports = [{
             'in': 'header',
             'description': 'Org-Code',
             'required': true
+        }, {
+            'name': 'employeeId',
+            'in': 'query',
+            'description': 'Employee-code',
+            'required': false
         }],
         'responses': {
             'default': {

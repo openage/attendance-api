@@ -25,7 +25,10 @@ var leave = new mongoose.Schema({
     comment: String,
     leaveType: { type: mongoose.Schema.Types.ObjectId, ref: 'leaveType' },
     employee: { type: mongoose.Schema.Types.ObjectId, ref: 'employee' },
-    updatedAt: { type: Date, default: Date.now }
+    organization: { type: mongoose.Schema.Types.ObjectId, ref: 'organization' },
+
+    created_At: { type: Date, default: Date.now },
+    timeStamp: { type: Date, default: Date.now }
 })
 
 leave.pre('save', function (next) {

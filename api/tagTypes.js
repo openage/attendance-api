@@ -6,7 +6,7 @@ const db = require('../models')
 
 exports.create = (req, res) => {
     let model = {
-        name: req.body.name,
+        name: req.body.name.toLowerCase(),
         organization: req.context.organization
     }
 

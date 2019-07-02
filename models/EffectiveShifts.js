@@ -8,7 +8,10 @@ var effectiveShift = new mongoose.Schema({
     shiftType: { type: mongoose.Schema.Types.ObjectId, ref: 'shiftType' },
     employee: { type: mongoose.Schema.Types.ObjectId, ref: 'employee' },
     supervisor: { type: mongoose.Schema.Types.ObjectId, ref: 'employee' },
-    updatedAt: { type: Date, default: Date.now }
+    // updatedAt: { type: Date, default: Date.now },
+
+    created_At: { type: Date, default: Date.now },
+    timeStamp: { type: Date, default: Date.now }
 })
 
 effectiveShift.pre('save', function (next) {

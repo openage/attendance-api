@@ -7,31 +7,47 @@ const set = (model, entity, context) => {
     if (model.status) {
         entity.status = model.status
     }
+
+    if (model.message && entity.status === 'error') {
+        entity.error = model.message
+    }
 }
 
-const create = (model, context) => {
+const create = async (model, context) => {
     const log = logger.start('create')
 
-    if (!model.organization) {
-        model.organization = context.organization
-    }
-
     var task = new db.task({
-        date: model.date,
-        employee: model.employee,
+        data: model.data,
+        entity: model.entity,
         action: model.action,
+        progress: model.progress || 0,
+        assignedTo: model.assignedTo,
+        date: model.date || new Date(),
+        employee: model.employee,
         device: model.device,
-        organization: model.organization,
-        status: model.status
+        meta: model.meta,
+        organization: context.organization,
+        status: model.status || 'new'
     })
 
     return task.save()
 }
 
-const get = (id, context) => {
-    const log = logger.start('get')
+const get = async (query, context) => {
+    context.logger.debug('services/tasks:get')
 
-    return db.task.findById(id)
+    if (!query) {
+        return null
+    }
+
+    if (typeof query === 'string' && query.isObjectId()) {
+        return db.task.findById(query)
+    }
+    if (query.id) {
+        return db.task.findById(query.id)
+    }
+
+    return null
 }
 
 const search = async (query, context) => {

@@ -7,6 +7,8 @@ let locationLog = new mongoose.Schema({
     time: Date,
     ipAddress: String,
     message: String,
+    distance: Number,
+    duration: Number,
     location: {
         coordinates: {
             type: [Number], // [<longitude>, <latitude>]
@@ -14,7 +16,15 @@ let locationLog = new mongoose.Schema({
         },
         name: String,
         description: String
-    }
+    },
+
+    created_At: { type: Date, default: Date.now },
+    timeStamp: { type: Date, default: Date.now }
+})
+
+locationLog.pre('save', function (next) {
+    this.timeStamp = Date.now()
+    next()
 })
 
 mongoose.model('locationLog', locationLog)

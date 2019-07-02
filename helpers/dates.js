@@ -32,11 +32,47 @@ exports.diff = (date1, date2) => {
     return value
 }
 exports.days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+
+exports.minutes = (fromMinutes) => {
+    return {
+        toString: () => {
+            if (!fromMinutes) {
+                fromMinutes = 0
+            }
+            let hoursWorked = Math.floor(fromMinutes / 60)
+            let minutesWorked = Math.floor(fromMinutes - hoursWorked * 60)
+
+            let hours = '00'
+            if (hoursWorked === 0) {
+                hours = '00'
+            } else if (hoursWorked < 10) {
+                hours = `0${hoursWorked}`
+            } else {
+                hours = `${hoursWorked}`
+            }
+
+            let minutes = '00'
+            if (minutesWorked === 0) {
+                minutes = '00'
+            } else if (minutesWorked < 10) {
+                minutes = `0${minutesWorked}`
+            } else {
+                minutes = `${minutesWorked}`
+            }
+
+            return `${hours}:${minutes}`
+        }
+    }
+}
 exports.time = (time1) => {
     time1 = time1 || new Date()
     return {
-        diff: (time2) => {
+        diff: (time2, actual) => {
             let value = moment(time1).diff(moment(time2), 'seconds')
+
+            if (actual) {
+                return value
+            }
             if (value < 0) {
                 value = -value
             }
@@ -44,6 +80,12 @@ exports.time = (time1) => {
             return value
         },
 
+        add: (minutes) => {
+            return moment(time1).add(minutes, 'minute').toDate()
+        },
+        subtract: (minutes) => {
+            return moment(time1).subtract(minutes, 'minute').toDate()
+        },
         span: (time2) => {
             let date = moment()
 
@@ -82,6 +124,9 @@ exports.time = (time1) => {
                 minutes = `0${minutes}`
             }
             return `${hours}:${minutes}`
+        },
+        isBetween: (from, till) => {
+            return moment(time1).isBetween(moment(from), moment(till), 's', '[]')
         },
         lt: (time2) => {
             if (!time2 || (!time1 && !time2)) {
@@ -135,11 +180,30 @@ exports.time = (time1) => {
 exports.date = (date1) => {
     date1 = date1 || new Date()
     return {
+        diff: (date2, actual) => {
+            let value = moment(date1).diff(moment(date2), 'day')
+
+            if (actual) {
+                return value
+            }
+            if (value < 0) {
+                value = -value
+            }
+
+            return value
+        },
         day: () => {
             return day(date1)
         },
-        bod: () => {
-            return moment(date1).startOf('day').toDate()
+        bod: (options) => {
+            options = options || {}
+            if (options.add) {
+                moment(date1).add(options.add, 'day').startOf('day').toDate()
+            } else if (options.subtract) {
+                moment(date1).subtract(options.subtract, 'day').startOf('day').toDate()
+            } else {
+                return moment(date1).startOf('day').toDate()
+            }
         },
 
         bom: () => {
@@ -157,8 +221,15 @@ exports.date = (date1) => {
         nextWeek: () => {
             return moment(date1).add(7, 'days').startOf('day').toDate()
         },
-        eod: () => {
-            return moment(date1).endOf('day').toDate()
+        eod: (options) => {
+            options = options || {}
+            if (options.add) {
+                moment(date1).add(options.add, 'day').endOf('day').toDate()
+            } else if (options.subtract) {
+                moment(date1).subtract(options.subtract, 'day').endOf('day').toDate()
+            } else {
+                return moment(date1).endOf('day').toDate()
+            }
         },
         eom: () => {
             return moment(date1).endOf('month').toDate()
@@ -189,7 +260,7 @@ exports.date = (date1) => {
         },
         toString: (format) => {
             format = format || 'dddd, MMMM Do YYYY'
-            return moment(date1).format('dddd, MMMM Do YYYY')
+            return moment(date1).format(format)
         }
     }
 }

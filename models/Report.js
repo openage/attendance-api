@@ -11,11 +11,19 @@ let report = new mongoose.Schema({
     filePath: { type: String },
     fileUrl: { type: String },
     error: { type: String },
-    params: {type: Object},
+    params: { type: Object },
     status: {
         type: String,
         enum: ['new', 'in-progress', 'ready', 'cancelled', 'errored']
-    }
+    },
+
+    created_At: { type: Date, default: Date.now },
+    timeStamp: { type: Date, default: Date.now }
+})
+
+report.pre('save', function (next) {
+    this.timeStamp = Date.now()
+    next()
 })
 
 report.plugin(findOrCreate)

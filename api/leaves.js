@@ -9,7 +9,10 @@ const shiftCheck = require('../services/shifts').getDayStatus
 const offline = require('@open-age/offline-processor')
 
 const leaves = require('../services/leaves')
+const employeeService = require('../services/employees')
 const db = require('../models')
+const dates = require('../helpers/dates')
+const pager = require('../helpers/paging')
 
 var configureNotification = function (supervisorId, leaveId) {
     if (!supervisorId) {
@@ -17,7 +20,9 @@ var configureNotification = function (supervisorId, leaveId) {
     }
 
     return db.notification.find({
-        task: { $exists: true },
+        task: {
+            $exists: true
+        },
         'task.type': 'leave',
         'task.id': leaveId
     })
@@ -35,7 +40,9 @@ var configureNotification = function (supervisorId, leaveId) {
                         supervisor.notifications.splice(supervisor.notifications.indexOf(senderNotification), 1)
                         supervisor.save().then(() => {
                             next()
-                        }).catch(err => { throw err })
+                        }).catch(err => {
+                            throw err
+                        })
                     })
             }, (err) => {
 
@@ -83,7 +90,9 @@ var futureShiftManager = function (leave, leaveDate) {
                 shift: shift.result,
                 ofDate: fromDate
 
-            }, { upsert: true })
+            }, {
+                upsert: true
+            })
         })
         .catch(err => {
             throw err
@@ -136,6 +145,15 @@ exports.create = async (req) => {
 
 exports.bulk = async (req) => {
     for (const item of req.body.items) {
+        if (item.employee.code) {
+            let employee = await employeeService.getByCode(item.employee.code, req.context)
+            if (employee) {
+                item.employee = employee
+            } else {
+                return (`Employee with code ${item.employee.code} not exists`)
+            }
+        }
+
         await leaves.create(item, req.context)
     }
 
@@ -252,7 +270,10 @@ exports.createMultiple = (req, res) => {
                     return query
                         .then(leaveType => {
                             data.leaveType = leaveType.result || leaveType
-                            return { leaveType: leaveType.result || leaveType, employee: employee }
+                            return {
+                                leaveType: leaveType.result || leaveType,
+                                employee: employee
+                            }
                         })
                 })
                 .then(data => {
@@ -314,7 +335,10 @@ exports.createMultiple = (req, res) => {
                     .then(leave => {
                         data.leaveType = leaveBalance.leaveType
                         leave.days = data.days
-                        return { leaveBalance: leaveBalance, leave: leave }
+                        return {
+                            leaveBalance: leaveBalance,
+                            leave: leave
+                        }
                     })
             })
             .then(data => {
@@ -340,7 +364,10 @@ exports.createMultiple = (req, res) => {
 
                 // send-notification-to-supervisor
                 req.context.processSync = true
-                return offline.queue('leave', 'submit', { id: leave.id, bot: data.bot }, req.context)
+                return offline.queue('leave', 'submit', {
+                    id: leave.id,
+                    bot: data.bot
+                }, req.context)
             })
     })
         .then(() => {
@@ -363,52 +390,92 @@ exports.get = (req, res) => {
         })
 }
 
-exports.search = (req, res) => {
-    let query = {
-        employee: req.employee.id,
-        date: { $lte: moment()._d }
+exports.search = async (req) => {
+    let pageInput = pager.extract(req)
+
+    let where = {
+        organization: req.context.organization
     }
+    let date = dates.date(req.query.date)
+    if (req.query.from && req.query.till) {
+        where.date = {
+            $gte: dates.date(req.query.from).bod(),
+            $lte: dates.date(req.query.till).eod()
+        }
+    } else {
+        where.date = {
+            $gte: date.bom(),
+            $lte: date.eom()
+        }
+    }
+
+    if (!req.context.hasPermission(['admin', 'superadmin'])) {
+        where.employee = req.context.employee.id
+    }
+
     if (req.query.status) {
-        query.status = {
+        where.status = {
             $in: [req.query.status]
         }
     } else {
-        query.status = {
-            $in: ['approved', 'rejected']
-        }
+        where.status = 'approved'
     }
 
-    let pendingLeaves = db.leave.find({
-        employee: req.employee.id,
-        status: 'submitted'
-    }).populate('leaveType').sort({ date: -1 })
-
-    let upcomingLeaves = db.leave.find({
-        employee: req.employee.id,
-        status: 'approved',
-        date: {
-            $gt: moment()._d
-        }
-    }).populate('leaveType').sort({ date: -1 })
-
-    let leavesHistory = db.leave.find(query)
-        .populate('leaveType')
-        .sort({ date: -1 })
-
-    Promise.all([pendingLeaves, upcomingLeaves, leavesHistory])
-        .spread((pendingLeaves, upcomingLeaves, leavesHistory) => {
-            var leaveData = {}
-            let pendingLeaveItems = mapper.toSearchModel(pendingLeaves)
-
-            let upcomingLeaveItems = mapper.toSearchModel(upcomingLeaves)
-
-            let leavesHistoryItems = mapper.toSearchModel(leavesHistory)
-            leaveData.pendingLeaveItems = pendingLeaveItems
-            leaveData.upcomingLeaveItems = upcomingLeaveItems
-            leaveData.leavesHistoryItems = leavesHistoryItems
-
-            res.data(leaveData)
+    let total = await db.leave.find(where).count()
+    let entities
+    if (pageInput) {
+        entities = await db.leave.find(where).skip(pageInput.skip).limit(pageInput.limit).populate('leaveType employee').sort({
+            date: -1
         })
+    } else {
+        entities = await db.leave.find(where).populate('leaveType employee').sort({
+            date: -1
+        })
+    }
+
+    let page = {
+        items: mapper.toSearchModel(entities)
+    }
+
+    if (pageInput) {
+        page.total = total
+        page.pageNo = pageInput.pageNo
+        page.pageSize = pageInput.limit
+    }
+
+    return page
+
+    // let pendingLeaves = db.leave.find({
+    //     employee: req.employee.id,
+    //     status: 'submitted'
+    // }).populate('leaveType').sort({ date: -1 })
+
+    // let upcomingLeaves = db.leave.find({
+    //     employee: req.employee.id,
+    //     status: 'approved',
+    //     date: {
+    //         $gt: moment()._d
+    //     }
+    // }).populate('leaveType').sort({ date: -1 })
+
+    // let leavesHistory = db.leave.find(query)
+    //     .populate('leaveType')
+    //     .sort({ date: -1 })
+
+    // Promise.all([pendingLeaves, upcomingLeaves, leavesHistory])
+    //     .spread((pendingLeaves, upcomingLeaves, leavesHistory) => {
+    //         var leaveData = {}
+    //         let pendingLeaveItems = mapper.toSearchModel(pendingLeaves)
+
+    //         let upcomingLeaveItems = mapper.toSearchModel(upcomingLeaves)
+
+    //         let leavesHistoryItems = mapper.toSearchModel(leavesHistory)
+    //         leaveData.pendingLeaveItems = pendingLeaveItems
+    //         leaveData.upcomingLeaveItems = upcomingLeaveItems
+    //         leaveData.leavesHistoryItems = leavesHistoryItems
+
+    //         res.data(leaveData)
+    //     })
 }
 
 exports.delete = (req, res) => {
@@ -498,7 +565,9 @@ exports.actionOnLeave = (req, res) => {
         comment: model.comment
     }
 
-    db.leave.findOne({ _id: leaveId })
+    db.leave.findOne({
+        _id: leaveId
+    })
         .populate('leaveType')
         .populate({
             model: 'employee',
@@ -565,7 +634,9 @@ exports.actionOnLeave = (req, res) => {
                 }
 
                 context.processSync = true
-                return offline.queue('leave', action, { id: leave.id }, context)
+                return offline.queue('leave', action, {
+                    id: leave.id
+                }, context)
                     .then(() => {
                         // status change to seen on supervisor profile
                         return configureNotification(leave.employee.supervisor, leaveId)
@@ -581,7 +652,12 @@ exports.myTeamLeaves = (req, res) => {
     var myTeamLeaves = []
     async.waterfall([
         function (cb) {
-            db.team.find({ supervisor: me, employee: { $exists: true } }, function (err, team) {
+            db.team.find({
+                supervisor: me,
+                employee: {
+                    $exists: true
+                }
+            }, function (err, team) {
                 if (err) {
                     return cb(err)
                 }
@@ -592,7 +668,9 @@ exports.myTeamLeaves = (req, res) => {
             async.each(employees, function (employee, callme) {
                 db.leave.find({
                     employee: employee,
-                    status: { $eq: 'submitted' }
+                    status: {
+                        $eq: 'submitted'
+                    }
                 })
                     .populate({
                         path: 'leaveType',
@@ -655,7 +733,9 @@ exports.organizationLeaves = (req, res) => {
         _.each(queryTags, (tagId) => {
             tagIds.push(global.toObjectId(tagId))
         })
-        query.tags = { $in: tagIds }
+        query.tags = {
+            $in: tagIds
+        }
     }
 
     if (req.query.leaveType) {
@@ -686,7 +766,9 @@ exports.organizationLeaves = (req, res) => {
 
             return Promise.all([
                 db.leave.find(leaveQuery).count(),
-                db.leave.find(leaveQuery).sort({ date: -1 })
+                db.leave.find(leaveQuery).sort({
+                    date: -1
+                })
                     .populate('leaveType')
                     .populate({
                         path: 'employee',
@@ -695,7 +777,10 @@ exports.organizationLeaves = (req, res) => {
                     .skip(fromPage).limit(pageLmt)
             ])
                 .spread((totalRecordsCount, leaves) => {
-                    return { leaves: leaves, totalRecordsCount: totalRecordsCount }
+                    return {
+                        leaves: leaves,
+                        totalRecordsCount: totalRecordsCount
+                    }
                 })
         })
         .then(data => {

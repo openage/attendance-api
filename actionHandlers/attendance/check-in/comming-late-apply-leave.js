@@ -22,7 +22,7 @@ const isLate = (attendance, limit) => {
     return shiftCheckIn.diff(shiftStartTime, 'minutes') >= limit
 }
 
-exports.process = (data, alert, context) => {
+exports.process = async (attendance, alert, context) => {
     let supervisorLevel = 0
     let channels = ['push']
     let noOfMinutes = 1
@@ -38,25 +38,20 @@ exports.process = (data, alert, context) => {
         }
     }
 
-    return db.attendance.findById(data.id).populate('employee shift').then(attendance => {
-        db.shift.findById(attendance.shift.id).populate('shiftType').then(shift => {
-            attendance.shift = shift
-            if (!isLate(attendance, noOfMinutes)) { return Promise.cast(null) }
+    const shift = await db.shift.findById(attendance.shift.id).populate('shiftType')
+    attendance.shift = shift
+    if (!isLate(attendance, noOfMinutes)) { return }
 
-            return communications.send({
-                employee: attendance.employee,
-                level: supervisorLevel
-            }, {
-                actions: ['applyLeave'],
-                entity: entities.toEntity(attendance, 'attendance'),
-                data: {
-                    checkIn: attendance.checkIn,
-                    name: attendance.employee.name || attendance.employee.code
-                },
-                template: 'comming-late-apply-leave'
-            }, channels, context)
-        }).catch(err => {
-            return Promise.cast(null)
-        })
-    })
+    await communications.send({
+        employee: attendance.employee,
+        level: supervisorLevel
+    }, {
+        actions: ['applyLeave'],
+        entity: entities.toEntity(attendance, 'attendance'),
+        data: {
+            checkIn: attendance.checkIn,
+            name: attendance.employee.name || attendance.employee.code
+        },
+        template: 'comming-late-apply-leave'
+    }, channels, context)
 }

@@ -3,14 +3,27 @@
 exports.toModel = entity => {
     var model = {
         id: entity.id,
-        name: entity.name,
         code: entity.code,
+        name: entity.name,
         unitsPerDay: entity.unitsPerDay,
+        credit: entity.credit,
         unlimited: entity.unlimited,
         category: entity.category,
-        periodicity: entity.periodicity,
         carryForward: entity.carryForward,
-        monthlyLimit: entity.monthlyLimit
+        monthlyLimit: entity.monthlyLimit,
+        periodicity: {
+            type: 'manual',
+            value: 0
+        }
+    }
+
+    if (entity.credit && entity.unitsPerDay) {
+        model.days = entity.credit / entity.unitsPerDay
+    }
+
+    if (entity.periodicity) {
+        model.periodicity.type = entity.periodicity.type || 'manual'
+        model.periodicity.value = entity.periodicity.value || 0
     }
 
     return model

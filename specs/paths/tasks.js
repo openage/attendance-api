@@ -2,7 +2,7 @@ module.exports = [{
     url: '/',
     post: {
         summary: 'Create Tasks',
-        description: 'Craate task for device configurations',
+        description: 'Create task for device configurations',
         parameters: [{
             name: 'body',
             description: 'Task details',

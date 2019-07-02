@@ -113,7 +113,7 @@ module.exports = [{
             'description': 'token',
             'required': true
         }, {
-            'name': 'id',
+            'name': 'employeeId',
             'in': 'query',
             'description': 'set my to to update yours profile otherwise id',
             'type': 'string'

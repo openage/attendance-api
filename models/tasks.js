@@ -19,12 +19,18 @@ var task = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'organization'
     },
-    action: {
-        type: String,
-        enum: ['add', 'delete', 'fetch', 'delete']
-    },
+    entity: String,
+    action: String,
+    assignedTo: String,
+    data: String,
     date: Date,
-    status: String
+    status: String,
+    progress: Number,
+    meta: Object,
+    error: Object,
+
+    created_At: { type: Date, default: Date.now },
+    timeStamp: { type: Date, default: Date.now }
 })
 
 task.pre('save', function (next) {

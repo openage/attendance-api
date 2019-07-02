@@ -7,7 +7,7 @@ const async = require('async')
 const db = require('../models')
 
 exports.create = (req, res) => {
-    devices.log(req.body.deviceId, req.body.status, req.body.description)
+    devices.log(req.body.deviceId, req.body.status, req.body.description, req.context)
         .then(log => {
             return res.success()
         })
@@ -20,7 +20,16 @@ exports.search = (req, res) => {
     var filters = {
         level: req.query.level,
         date: req.query.date,
-        deviceId: req.query.deviceId
+        deviceId: req.query.deviceId,
+        description: req.query.description
+    }
+
+    if (filters.description) {
+        whereQuery.description = {
+            $regex: filters.description,
+            $options: 'i'
+        }
+        filters.level = 'd'
     }
 
     switch (filters.level || 'all') {

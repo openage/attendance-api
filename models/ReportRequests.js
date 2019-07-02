@@ -29,7 +29,15 @@ let reportRequests = new mongoose.Schema({
     organization: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'organization'
-    }
+    },
+
+    created_At: { type: Date, default: Date.now },
+    timeStamp: { type: Date, default: Date.now }
+})
+
+reportRequests.pre('save', function (next) {
+    this.timeStamp = Date.now()
+    next()
 })
 
 reportRequests.plugin(findOrCreate)

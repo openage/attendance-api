@@ -1,34 +1,70 @@
 'use strict'
 
-const logger = require('@open-age/logger')('api/tasks')
 const service = require('../services/tasks')
 const mapper = require('../mappers/task')
 
-exports.create = async (req, res) => {
-    const log = logger.start('create')
+const offline = require('@open-age/offline-processor')
 
+exports.create = async (req) => {
     const task = await service.create(req.body, req.context)
-
-    return res.data(mapper.toModel(task))
+    return mapper.toModel(task)
 }
 
-exports.get = async (req, res) => {
-    const log = logger.start('get')
+exports.run = async (req) => {
+    const task = await service.get(req.params.id, req.context)
+    // if ('new|error'.indexOf(task.status) === -1) {
+    //     throw new Error(`cannot run a task in state '${task.status}'`)
+    // }
 
+    // if ('job|processor'.indexOf(task.assignedTo) === -1) {
+    //     throw new Error(`cannot run a task of type '${task.assignedTo}'`)
+    // }
+
+    task.status = 'queued'
+    await task.save()
+    await offline.queue('task', 'run', task, req.context)
+    return 'queued'
+}
+
+exports.get = async (req) => {
     const task = await service.get(req.params.id, req.context)
 
-    return res.data(mapper.toModel(task))
+    return mapper.toModel(task)
 }
 
-exports.search = async (req, res) => {
-    const log = logger.start('search')
+exports.search = async (req) => {
+    const query = {}
 
-    const query = {
-        status: 'new'
+    if (req.query.biometricId) {
+        query.data = req.query.biometricId
     }
 
-    if (req.query.device) {
-        query.device = req.query.device
+    if (req.query.biometricIds) {
+        query.data = {
+            $in: req.query.biometricIds.split(',')
+        }
+    }
+
+    if (!req.query.status) {
+        query.status = 'new'
+    } else if (req.query.status !== 'any') {
+        query.status = req.query.status
+    }
+
+    if (req.query.deviceId !== 'any') {
+        if (req.query.device) {
+            query.device = req.query.device
+        } else if (req.query.deviceId) {
+            query.device = req.query.deviceId
+        } else {
+            query.device = null
+        }
+    }
+
+    if (!req.query.assignedTo) {
+        query.assignedTo = 'sync-service'
+    } else if (req.query.assignedTo !== 'any') {
+        query.assignedTo = req.query.assignedTo
     }
 
     if (req.query.from) {
@@ -39,13 +75,11 @@ exports.search = async (req, res) => {
 
     const tasks = await service.search(query, req.context)
 
-    return res.page(mapper.toSearchModel(tasks))
+    return mapper.toSearchModel(tasks)
 }
 
 exports.update = async (req, res) => {
-    const log = logger.start('update')
-
     const task = await service.update(req.params.id, req.body, req.context)
 
-    return res.data(mapper.toModel(task))
+    return mapper.toModel(task)
 }

@@ -3,6 +3,8 @@ const moment = require('moment')
 const shiftTypes = require('../services/shift-types')
 const logger = require('@open-age/logger')('services.shifts')
 
+const employeeService = require('../services/employee-getter')
+
 const dates = require('../helpers/dates')
 const db = require('../models')
 
@@ -14,7 +16,7 @@ const states = {
 
 exports.states = states
 
-let getShiftStatus = async (shiftType, date) => {
+exports.getShiftStatus = async (shiftType, date) => {
     let todayIs = dates.date(date).day()
 
     if (shiftType[todayIs] === 'off') {
@@ -42,7 +44,7 @@ let getShiftStatus = async (shiftType, date) => {
     return states.working
 }
 
-let getDayStatus = async (shiftType, date) => {
+exports.getDayStatus = async (shiftType, date) => {
     let todaysDate = dates.date(date).bod()
 
     let holiday = await db.holiday.findOne({
@@ -57,7 +59,7 @@ let getDayStatus = async (shiftType, date) => {
         }
     }
     return {
-        status: await getShiftStatus(shiftType, date)
+        status: await exports.getShiftStatus(shiftType, date)
     }
 }
 
@@ -147,23 +149,59 @@ let getLowerShift = async (time, shiftType, context) => {
     return getOrCreate(shiftType, setForMore, fromDate, isDate, toDate, context)
 }
 
+exports.getSummary = (shift, context) => {
+    const shiftType = shift.shiftType
+
+    let summary = {
+        code: shiftType.code,
+        endTime: dates.date(shift.date).setTime(shiftType.endTime),
+        startTime: dates.date(shift.date).setTime(shiftType.startTime)
+    }
+
+    if (summary.startTime.getTime() > summary.endTime.getTime()) {
+        summary.endTime = moment(summary.endTime).add(1, 'day').toDate()
+    }
+
+    let shiftSpan = dates.time(summary.endTime).diff(summary.startTime) / 60
+    var breakTime = shiftType.breakTime || 0
+
+    summary.span = shiftSpan
+
+    if (!context.getConfig('shift.span.ignoreBreak')) {
+        summary.span = summary.span - breakTime
+    }
+
+    return summary
+}
+
+exports.reset = async (shift, context) => {
+    const dayStatus = await exports.getDayStatus(shift.shiftType, shift.date, context)
+    if (shift.status !== dayStatus.status) {
+        shift.status = dayStatus.status
+        await shift.save()
+    }
+
+    return shift
+}
+
 exports.shiftByShiftType = async (shiftType, date, context) => {
+    shiftType = await shiftTypes.get(shiftType, context)
     let shift = await db.shift.findOne({
-        shiftType: shiftType.id,
+        shiftType: shiftType,
         date: {
             $gte: dates.date(date).bod(),
             $lt: dates.date(date).eod()
         }
-    })
+    }).populate('shiftType')
 
     if (shift) {
         return shift
     }
 
-    let shiftStatus = await getDayStatus(shiftType, date)
+    let shiftStatus = await exports.getDayStatus(shiftType, date)
 
     shift = new db.shift({
-        shiftType: shiftType._id,
+        shiftType: shiftType.id || shiftType,
         status: shiftStatus.status,
         holiday: shiftStatus.holiday,
         date: dates.date(date).setTime(shiftType.startTime)
@@ -178,25 +216,100 @@ exports.shiftByShiftType = async (shiftType, date, context) => {
 
 exports.getByTime = async (time, shiftType, context) => {
     let log = logger.start('getByTime')
-    return Promise.all([
-        getUpperShift(time, shiftType, context), getLowerShift(time, shiftType, context)
-    ]).spread((shiftA, shiftB) => {
-        shiftA.shiftType = shiftType // old
-        shiftB.shiftType = shiftType // new
+    shiftType = await shiftTypes.get(shiftType, context)
+    let shiftA = await getUpperShift(time, shiftType, context)
+    let shiftB = await getLowerShift(time, shiftType, context)
 
-        let shiftBStartTime = moment(shiftB.date)
-            .set('hour', moment(shiftType.startTime).hours())
-            .set('minute', moment(shiftType.startTime).minutes())
-            .set('second', moment(shiftType.startTime).seconds())
-            .set('millisecond', moment(shiftType.startTime).milliseconds())
+    shiftA.shiftType = shiftType // old
+    shiftB.shiftType = shiftType // new
 
-        let checkBoolean1 = moment(time).isBefore(moment(shiftBStartTime).subtract(5, 'hours'))
-        let shift = checkBoolean1 ? shiftA : shiftB
+    let shiftBStartTime = moment(shiftB.date)
+        .set('hour', moment(shiftType.startTime).hours())
+        .set('minute', moment(shiftType.startTime).minutes())
+        .set('second', moment(shiftType.startTime).seconds())
+        .set('millisecond', moment(shiftType.startTime).milliseconds())
 
-        log.debug(`found shift with date: '${shift.date}' as the most relevant ${shiftType.name} shift for time: '${time}'`)
-        return shift
-    })
+    let checkBoolean1 = moment(time).isBefore(moment(shiftBStartTime).subtract(5, 'hours'))
+    let shift = checkBoolean1 ? shiftA : shiftB
+
+    log.debug(`found shift with date: '${shift.date}' as the most relevant ${shiftType.name} shift for time: '${time}'`)
+    return shift
 }
 
-exports.getShiftStatus = getShiftStatus
-exports.getDayStatus = getDayStatus
+exports.getByTimeLog = async (timeLog, employee, context) => {
+    let shiftType = employee.shiftType
+
+    if (employee.isDynamicShift && timeLog.type) {
+        if (timeLog.type === 'checkIn') {
+            shiftType = await shiftTypes.getByCheckIn(timeLog.time, employee, context)
+        }
+
+        if (timeLog.type === 'checkOut') {
+            shiftType = await shiftTypes.getByCheckOut(timeLog.time, employee, context)
+        }
+    }
+
+    return exports.getByTime(timeLog.time, shiftType, context)
+}
+
+exports.getByDate = async (date, employee, context) => {
+    context.logger.debug('getting shift by roaster')
+
+    employee = await employeeService.get(employee, context)
+    let shiftType = employee.shiftType
+    let previousShift = await db.effectiveShift.findOne({
+        employee: employee.id,
+        date: {
+            $lte: dates.date(date).bod()
+        }
+    }).sort({
+        date: -1
+    }).populate('shiftType')
+
+    if (previousShift) {
+        shiftType = previousShift.shiftType
+    }
+
+    return exports.shiftByShiftType(shiftType, date, context)
+}
+
+/**
+ * String
+ * { id: String}
+ * { shiftType: {id: String}, date: Date }
+ * { shiftType: {id: String}, time: Date }
+ * { employee: {id: String}, date: Date }
+ * { employee: {id: String}, timeLog: {time: Date, type: String} }
+ *
+*/
+exports.get = async (query, context) => {
+    context.logger.start('services/shifts:get')
+
+    if (query._doc) {
+        return query
+    }
+
+    if (typeof query === 'string' && query.isObjectId()) {
+        return db.shift.findById(query).populate('shiftType')
+    }
+    if (query.id) {
+        return db.shift.findById(query.id).populate('shiftType')
+    }
+    if (query.shiftType) {
+        if (query.date) {
+            return exports.shiftByShiftType(query.shiftType, query.date, context)
+        }
+        if (query.time) {
+            return exports.getByTime(query.time, query.shiftType, context)
+        }
+    }
+    if (query.employee) {
+        if (query.date) {
+            return exports.getByDate(query.date, query.employee, context)
+        }
+        if (query.timeLog) {
+            return exports.getByTimeLog(query.timLog, query.employee, context)
+        }
+    }
+    return null
+}

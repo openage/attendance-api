@@ -33,6 +33,13 @@ const search = async (query, skipCount, limitCount, context) => {
         where.type = query.type
     }
 
+    if (query.status) {
+        where.status = query.status
+    } else {
+        where.status = {
+            $in: ['new', 'in-progress', 'ready']
+        }
+    }
     const count = await db.reportRequests.find(where).count()
 
     const items = await db.reportRequests.find(where).skip(skipCount).limit(limitCount).sort({ requestedAt: -1 })

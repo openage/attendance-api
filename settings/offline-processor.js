@@ -19,7 +19,13 @@ exports.configure = function (logger) {
     let config = JSON.parse(JSON.stringify(queueConfig))
     config.context = require('../helpers/context-builder')
     config.models = {
-        reportRequest: fromService('reportRequests')
+        reportRequest: fromService('reportRequests'),
+        attendance: fromService('attendances'),
+        timeLog: fromService('time-logs'),
+        leaveType: fromService('leave-types'),
+        shiftType: fromService('shift-types'),
+        shift: fromService('shifts'),
+        task: fromService('tasks')
     }
     require('@open-age/offline-processor').initialize(config, log)
 }

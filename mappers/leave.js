@@ -15,7 +15,7 @@ exports.toModel = entity => {
         status: entity.status,
         reason: entity.reason,
         comment: entity.comment,
-        createdAt: entity.updatedAt
+        createdAt: entity.created_At
     }
 
     if (entity.start) {
@@ -32,7 +32,7 @@ exports.toModel = entity => {
         }
     }
 
-    if (entity.leaveType._doc) {
+    if (entity.leaveType && entity.leaveType._doc) {
         if (entity.leaveType.unlimited) {
             model.days = entity.units
         } else {
@@ -48,7 +48,7 @@ exports.toModel = entity => {
         }
     }
 
-    if (entity.employee._doc) {
+    if (entity.employee && entity.employee._doc) {
         model.employee = {
             id: entity.employee.id,
             name: entity.employee.name,
@@ -56,7 +56,7 @@ exports.toModel = entity => {
             picData: entity.employee.picData,
             picUrl: entity.employee.picUrl === '' ? null : entity.employee.picUrl
         }
-    } else {
+    } else if (entity.employee) {
         model.employee = {
             id: entity.employee.toString()
         }

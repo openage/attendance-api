@@ -3,9 +3,14 @@ const moment = require('moment')
 const offline = require('@open-age/offline-processor')
 const dates = require('../helpers/dates')
 const db = require('../models')
+const dbQuery = require('../helpers/querify')
 
 const get = async (query, context) => {
+    if (query._doc) {
+        return query
+    }
     let log = context.logger.start('services/shiftTypes:get')
+
     let where = {
         organization: context.organization
     }
@@ -17,7 +22,11 @@ const get = async (query, context) => {
         return db.shiftType.findOne(where)
     }
     if (query.id) {
-        return db.shiftType.findById(query.id)
+        if (typeof query.id === 'string') {
+            return db.shiftType.findById(query.id)
+        } else {
+            return db.shiftType.findById(query.toString())
+        }
     }
     if (query.code) {
         where['code'] = query.code
@@ -31,10 +40,141 @@ const get = async (query, context) => {
 
 exports.get = get
 
-exports.create = (model, callback) => {
-    var data = {
+exports.getGrace = (shiftType, context) => {
+    let grace = {
+        checkIn: {
+            early: 0,
+            late: 0
+        },
+        checkOut: {
+            early: 0,
+            late: 0
+        }
+    }
+
+    if (shiftType.grace) {
+        if (shiftType.grace.checkIn) {
+            grace.checkIn.early = shiftType.grace.checkIn.early
+            grace.checkIn.late = shiftType.grace.checkIn.late
+        }
+
+        if (shiftType.grace.checkOut) {
+            grace.checkOut.early = shiftType.grace.checkOut.early
+            grace.checkOut.late = shiftType.grace.checkOut.late
+        }
+    }
+
+    return grace
+}
+
+const setGrace = (shiftType, graceModel, context) => {
+    shiftType.grace = {
+        checkIn: {
+            early: graceModel.checkIn.early || 0,
+            late: graceModel.checkIn.late || 0
+        },
+        checkOut: {
+            early: graceModel.checkOut.early || 0,
+            late: graceModel.checkOut.late || 0
+        }
+    }
+
+    return shiftType
+}
+
+const set = async (shiftType, model, contex) => {
+    if (model.name) {
+        shiftType.name = model.name
+    }
+
+    if (model.grace) {
+        shiftType = setGrace(shiftType, model.grace)
+    }
+    if (model.breakTime !== undefined) {
+        shiftType.breakTime = model.breakTime
+    }
+    if (model.color) {
+        shiftType.color = model.color
+    }
+    if (model.isDynamic !== undefined) {
+        shiftType.isDynamic = model.isDynamic
+    }
+    if (model.department !== undefined) {
+        if (model.department === '' || model.department === null) {
+            shiftType.department = undefined
+        } else {
+            shiftType.department = model.department
+        }
+    }
+
+    if (model.autoExtend !== undefined) {
+        shiftType.autoExtend = model.autoExtend
+    }
+
+    if (model.startTime) {
+        shiftType.startTime = moment(model.startTime).set('seconds', 0).set('milliseconds', 0)
+    }
+    if (model.endTime) {
+        shiftType.endTime = moment(model.endTime).set('seconds', 0).set('milliseconds', 0)
+    }
+
+    if (model.monday) {
+        shiftType.monday = model.monday
+    }
+    if (model.tuesday) {
+        shiftType.tuesday = model.tuesday
+    }
+    if (model.wednesday) {
+        shiftType.wednesday = model.wednesday
+    }
+    if (model.thursday) {
+        shiftType.thursday = model.thursday
+    }
+    if (model.friday) {
+        shiftType.friday = model.friday
+    }
+    if (model.saturday) {
+        shiftType.saturday = model.saturday
+    }
+    if (model.sunday) {
+        shiftType.sunday = model.sunday
+    }
+
+    return shiftType
+}
+
+exports.create = async (model, context) => {
+    model.code = model.code.toLowerCase()
+    let entity = await db.shiftType.findOne({
         code: model.code,
-        name: model.name || model.code,
+        organization: context.organization.id
+    })
+
+    if (entity) {
+        throw new Error(`code '${model.code}' already exists`)
+    }
+
+    let shiftType = new db.shiftType({
+        code: model.code,
+        organization: context.organization
+    })
+
+    shiftType = await set(shiftType, {
+        grace: model.grace || {
+            checkIn: {
+                early: 0,
+                late: 0
+            },
+            checkOut: {
+                early: 0,
+                late: 0
+            }
+        },
+        name: model.name,
+        breakTime: model.breakTime || 0,
+        color: model.color,
+        isDynamic: model.isDynamic,
+        department: model.department,
         startTime: model.startTime || moment().set('hour', 9).set('minute', 0).set('second', 0).set('millisecond', 0),
         endTime: model.endTime || moment().set('hour', 18).set('minute', 0).set('second', 0).set('millisecond', 0),
         monday: model.monday || 'full',
@@ -43,28 +183,72 @@ exports.create = (model, callback) => {
         thursday: model.thursday || 'full',
         friday: model.friday || 'full',
         saturday: model.saturday || 'off',
-        sunday: model.sunday || 'off',
-        organization: model.organization
+        sunday: model.sunday || 'off'
+    }, context)
+
+    shiftType = await shiftType.save()
+
+    await offline.queue('shift-type', 'create', shiftType, context)
+
+    return shiftType
+}
+
+exports.update = async (id, model, context) => {
+    let shiftType = await db.shiftType.findById(id)
+
+    if (model.code && shiftType.code.toLowerCase() !== model.code.toLowerCase()) {
+        model.code = model.code.toLowerCase()
+        let entity = await db.shiftType.findOne({
+            code: model.code,
+            organization: context.organization.id
+        })
+
+        if (entity) {
+            throw new Error(`code '${model.code}' already exists`)
+        }
+
+        shiftType.code = model.code
     }
 
-    new db.shiftType(data)
-        .save()
-        .then(shiftType => {
-            if (!shiftType) {
-                return callback(new Error(`could not create the shiftType - ${model.code}`))
-            }
+    shiftType = await set(shiftType, model, context)
 
-            offline.queue('shiftType', 'create', {
-                id: shiftType.id
-            }, {
-                organization: {
-                    id: shiftType.organization.id
-                }
-            }, (err) => {
-                callback(err, shiftType)
-            })
-        })
-        .catch(callback)
+    await shiftType.save()
+    await offline.queue('shift-type', 'update', shiftType, context)
+
+    return shiftType
+}
+
+const getTimings = (shiftType, ofDate, context) => {
+    let date = dates.date(ofDate)
+
+    let startTime = date.setTime(shiftType.startTime)
+
+    let endTime = date.setTime(shiftType.endTime)
+
+    if (endTime < startTime) {
+        endTime = dates.date(date.nextBod()).setTime(shiftType.endTime)
+    }
+
+    return {
+        startTime: startTime,
+        endTime: endTime
+    }
+}
+
+exports.getTimings = getTimings
+
+exports.getOverTime = (shiftType, count, options, context) => {
+    const extraShifts = count - 1
+
+    if (extraShifts <= 0) {
+        return 0
+    }
+
+    let time = getTimings(shiftType, new Date(), context)
+
+    let minutes = dates.time(time.startTime).diff(time.endTime) / 60
+
+    return extraShifts * minutes
 }
 
 exports.getDayStatus = (shiftType, date) => {
@@ -114,7 +298,9 @@ exports.getByDate = async (date, employeeId, context) => {
         date: {
             $lte: dates.date(date).bod()
         }
-    }).sort({ date: -1 }).populate('shiftType')
+    }).sort({
+        date: -1
+    }).populate('shiftType')
 
     if (effectiveShift) {
         shiftType = effectiveShift.shiftType
@@ -137,7 +323,9 @@ exports.reset = async (employee, context) => {
         date: {
             $lte: dates.date().bod()
         }
-    }).sort({ date: -1 }).populate('shiftType')
+    }).sort({
+        date: -1
+    }).populate('shiftType')
 
     let shiftType
     let changed = false
@@ -163,10 +351,34 @@ exports.reset = async (employee, context) => {
     }
 }
 
-exports.getByCheckIn = async (time, context) => {
-    let types = await db.shiftType.find({
-        organization: context.organization
-    })
+exports.getByEmployee = async (employee, context) => {
+    let where = {
+        $or: [{
+            organization: context.organization.id,
+            department: employee.department,
+            status: {
+                $ne: 'inactive'
+            }
+        }, {
+            organization: context.organization.id,
+            department: null,
+            status: {
+                $ne: 'inactive'
+            }
+        }]
+    }
+
+    if (employee.isDynamicShift) {
+        where.$or.forEach(item => {
+            item.isDynamic = true
+        })
+    }
+    return db.shiftType.find(where)
+}
+
+exports.getByCheckIn = async (time, employee, context) => {
+    let types = await exports.getByEmployee(employee, context)
+
     if (!types || !types.length) {
         return null
     }
@@ -209,10 +421,8 @@ exports.getByCheckIn = async (time, context) => {
     return type
 }
 
-exports.getByCheckOut = async (time, context) => {
-    let types = await db.shiftType.find({
-        organization: context.organization
-    })
+exports.getByCheckOut = async (time, employee, context) => {
+    let types = await exports.getByEmployee(employee, context)
     if (!types || !types.length) {
         return null
     }
@@ -236,3 +446,76 @@ exports.getByCheckOut = async (time, context) => {
     })
     return type
 }
+
+const search = async (query, context) => {
+    let log = context.logger.start('services/ShiftType:search')
+
+    let employee
+    let where = {}
+    if (query.employeeId) {
+        employee = await db.employee.findOne({
+            _id: query.employeeId
+        })
+    }
+    if (query.isDynamicShift === true) {
+        where.isDynamic = true
+    }
+    if (employee) {
+        where.$or = [{
+            organization: context.organization.id.toObjectId(),
+            department: employee.department,
+            status: {
+                $ne: 'inactive'
+            }
+        }, {
+            organization: context.organization.id.toObjectId(),
+            department: null,
+            status: {
+                $ne: 'inactive'
+            }
+        }]
+    } else if (query.department === 'shared') {
+        where = {
+            organization: context.organization.id.toObjectId(),
+            department: null,
+            status: {
+                $ne: 'inactive'
+            }
+        }
+    } else if (query.department) {
+        where.$or = [{
+            organization: context.organization.id.toObjectId(),
+            department: query.department,
+            status: {
+                $ne: 'inactive'
+            }
+        }, {
+            organization: context.organization.id.toObjectId(),
+            department: null,
+            status: {
+                $ne: 'inactive'
+            }
+        }]
+    } else {
+        where = {
+            organization: context.organization.id.toObjectId(),
+            status: {
+                $ne: 'inactive'
+            }
+        }
+    }
+    if (query.id) {
+        where['_id'] = global.toObjectId(query.id)
+    }
+
+    let shiftTypes = await dbQuery.findShiftTypes(where)
+
+    if (shiftTypes.length > 1) {
+        shiftTypes.sort((x, y) => {
+            return new Date(x.startTime.getHours()) - new Date(y.startTime.getHours())
+        })
+    }
+    log.end()
+    return shiftTypes
+}
+exports.search = search

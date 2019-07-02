@@ -11,7 +11,7 @@ const build = async (fileName, ofDate, getExtraHours, attendances, orgDetails) =
     var colomsUsed = 0
     var coloumn = 1
     var rowsUsed = 0
-    var sheet1 = workbook.createSheet('Attendences', 40, totalEmployees * 15)
+    var sheet1 = workbook.createSheet('Attendences', 40, 6 + totalEmployees * 15)
     log.info('sheet1 created')
     var summaryOf = moment(ofDate).startOf('month').format('MMMM YYYY')
 
@@ -43,23 +43,29 @@ const build = async (fileName, ofDate, getExtraHours, attendances, orgDetails) =
     sheet1.align(25, 1, 'bottom')
     sheet1.set(25, 1, `Dated:${moment().format('DD-MM-YYYY')}`)
 
-    sheet1.font(25, 2, {
-        bold: 'true'
-    })
-    sheet1.align(25, 2, 'left')
-    sheet1.set(25, 2, `Download by:-${orgDetails.downloaderName}`)
+    if (orgDetails.downloaderName) {
+        sheet1.font(25, 2, {
+            bold: 'true'
+        })
+        sheet1.align(25, 2, 'left')
+        sheet1.set(25, 2, `Download by:-${orgDetails.downloaderName}`)
+    }
 
-    sheet1.font(25, 3, {
-        bold: 'true'
-    })
-    sheet1.align(25, 3, 'left')
-    sheet1.set(25, 3, `${orgDetails.downloaderEmail}`)
+    if (orgDetails.downloaderEmail) {
+        sheet1.font(25, 3, {
+            bold: 'true'
+        })
+        sheet1.align(25, 3, 'left')
+        sheet1.set(25, 3, `${orgDetails.downloaderEmail}`)
+    }
 
-    sheet1.font(25, 4, {
-        bold: 'true'
-    })
-    sheet1.align(25, 4, 'left')
-    sheet1.set(25, 4, `${orgDetails.downloaderPhone}`)
+    if (orgDetails.downloaderPhone) {
+        sheet1.font(25, 4, {
+            bold: 'true'
+        })
+        sheet1.align(25, 4, 'left')
+        sheet1.set(25, 4, `${orgDetails.downloaderPhone}`)
+    }
 
     log.info('starting injecting data into sheet1')
     await Promise.each(attendances, data => {

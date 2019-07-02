@@ -13,6 +13,17 @@ module.exports = [{
         'source': {
             'type': 'string'
         },
+        'employee': {
+
+            'type': 'object',
+
+            'properties': {
+                'code': {
+                    'type': 'string'
+                }
+            }
+
+        },
         'location': {
             'type': 'object',
             'properties': {

@@ -12,10 +12,14 @@ var yearSummary = new mongoose.Schema({
         date: Date, // Date of leave
         leaveTypeCategory: String,
         leave: { type: mongoose.Schema.Types.ObjectId, ref: 'leave' }
-    }]
+    }],
+
+    created_At: { type: Date, default: Date.now },
+    timeStamp: { type: Date, default: Date.now }
 })
 
 yearSummary.pre('save', function (next) {
+    this.timeStamp = Date.now()
     next()
 })
 

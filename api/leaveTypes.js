@@ -1,63 +1,33 @@
 'use strict'
 const mapper = require('../mappers/leaveType')
-const dbQuery = require('../helpers/querify')
 const db = require('../models')
-const offline = require('@open-age/offline-processor')
+
+const leaveTypeService = require('../services/leave-types')
 
 exports.create = async (req) => {
-    let model = req.body
-    if (!model.name || !model.unitsPerDay || !model.category) {
-        throw new Error('-name-unitsPerDay-category required to create')
-    }
-
-    model.periodicity = model.periodicity || {}
-    model.periodicity.type = model.periodicity.type || 'manual'
-    model.organization = req.context.organization
-
-    let leaveType = new db.leaveType(model)
-    await leaveType.save()
-    await offline.queue('leave-type', 'create', { id: leaveType.id }, req.context)
-    return mapper.toModel(leaveType)
+    let entity = await leaveTypeService.create(req.body, req.context)
+    return mapper.toModel(entity)
 }
 
-exports.search = (req, res) => {
+exports.search = async (req) => {
     let query = {
-        organization: req.context.organization.id
+        organization: req.context.organization
     }
-
-    dbQuery.findLeaveTypes(query)
-        .then(leaveTypes => res.page(mapper.toSearchModel(leaveTypes)))
-        .catch(err => res.failure(err))
+    let leaveTypes = await db.leaveType.find(query)
+    return mapper.toSearchModel(leaveTypes)
 }
 
-exports.get = (req, res) => {
-    let query = {
-        _id: req.params.id
-    }
-    dbQuery.findLeaveType(query)
-        .then(shiftType => res.data(mapper.toModel(shiftType)))
-        .catch(err => res.failure(err))
+exports.get = async (req) => {
+    let entity = await leaveTypeService.get(req.params.id, req.context)
+    return mapper.toModel(entity)
 }
 
-exports.delete = (req, res) => {
-    let query = {
-        _id: req.params.id
-    }
-    // TODO deleted only by admin
-    db.leaveBalance.remove({ leaveType: req.params.id })
-        .then(() => db.leave.remove({ leaveType: req.params.id }))
-        .then(() => db.leaveType.remove(query))
-        .then(() => res.success('deleted successfully'))
-        .catch(err => res.failure(err))
+exports.delete = async (req) => {
+    await leaveTypeService.delete(req.params.id, req.context)
+    return 'deleted successfully'
 }
 
-exports.update = (req, res) => {
-    let toUpdate = req.body
-    let query = {
-        _id: req.params.id
-    }
-    // TODO updated only by admin
-    db.leaveType.findOneAndUpdate(query, { $set: toUpdate }, { new: true })
-        .then((leaveType) => res.data(mapper.toModel(leaveType)))
-        .catch(err => res.failure(err))
+exports.update = async (req) => {
+    let entity = await leaveTypeService.update(req.params.id, req.body, req.context)
+    return mapper.toModel(entity)
 }

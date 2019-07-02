@@ -1,11 +1,7 @@
 'use strict'
 const logger = require('@open-age/logger')('channels.slack')
-var db = global.db
 var slackConfig = require('config').get('providers.slack')
-var async = require('async')
-var moment = require('moment')
 var Slack = require('slack-node')
-var _ = require('underscore')
 
 let configGenerator = (config) => {
     if (!config) {

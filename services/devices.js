@@ -1,25 +1,65 @@
 'use strict'
-const logger = require('@open-age/logger')('services.devices')
 const db = require('../models')
 
-exports.log = (deviceId, level, message, context) => {
+exports.log = async (deviceId, level, message, context) => {
     if (!deviceId) {
-        return Promise.cast('')
+        return
     }
     let id = deviceId.id || deviceId
 
-    return db.device.findById(id).then(device => {
+    try {
+        const device = await db.device.findById(id)
         if (!device) {
-            logger.error(`could not log ${level} message ${message}, reason: device with id: ${deviceId} not found`)
-            return Promise.cast('')
+            context.logger.error(`could not log ${level} message ${message}, reason: device with id: ${deviceId} not found`)
+            return
         }
         return new db.deviceLog({
             status: level,
             description: message,
             device: device
         }).save()
-    }).catch(err => {
-        logger.error(`could not log ${level} message ${message} to device ${deviceId}`, err)
-        return Promise.cast('')
-    })
+    } catch (err) {
+        context.logger.error(`could not log ${level} message ${message} to device ${deviceId}`, err)
+    }
+}
+
+exports.setOnline = async (device, context) => {
+    let id = device.id || device
+
+    let log = context.logger.start({ location: 'setOnline', device: id })
+
+    device = await db.device.findById(id)
+
+    if (device.status === 'disabled') {
+        let error = 'DEVICE_DISABLED'
+        log.error(error)
+        throw new Error(error)
+    }
+    if (device.status === 'offline') {
+        log.info('device is now back')
+    }
+    device.status = 'online'
+    device.lastSeen = new Date()
+    return device.save()
+}
+
+exports.setOffline = async (device, context) => {
+    let id = device.id || device
+
+    let log = context.logger.start({ location: 'setOnline', device: id })
+
+    device = await db.device.findById(id)
+
+    if (device.status === 'disabled') {
+        let error = 'DEVICE_DISABLED'
+        log.error(error)
+        throw new Error(error)
+    }
+
+    if (device.status === 'online') {
+        log.error('DEVICE_OFFLINE')
+    }
+
+    device.status = 'offline'
+    return device.save()
 }

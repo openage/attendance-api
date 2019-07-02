@@ -10,10 +10,14 @@ var entity = new mongoose.Schema({
     weekStart: Date, // start date of week(monday)
     weekEnd: Date, // date of comming sunday
     // avgHours: Number, //avg hours worked in week,
-    attendances: [{ type: mongoose.Schema.Types.ObjectId, ref: 'attendance' }]
+    attendances: [{ type: mongoose.Schema.Types.ObjectId, ref: 'attendance' }],
+
+    created_At: { type: Date, default: Date.now },
+    timeStamp: { type: Date, default: Date.now }
 })
 
 entity.pre('save', function (next) {
+    this.timeStamp = Date.now()
     next()
 })
 

@@ -1,6 +1,7 @@
 'use strict'
 global.Promise = require('bluebird')
 global.processSync = true
+process.env.APP = 'cron'
 
 const fs = require('fs')
 const logger = require('@open-age/logger')('cron')
@@ -28,13 +29,15 @@ fs.readdirSync(`${appRoot}/jobs`).forEach(file => {
         return
     }
 
+    let orgCodes = process.env.ORG_CODES ? process.env.ORG_CODES.split(',') : null
+
     if (!process.env.CRON_NAME) {
-        return schedule()
+        return schedule(orgCodes)
     }
 
     if (process.env.CRON_NAME !== fileName.toLowerCase()) {
         return
     }
     logger.info(`scheduling ${file}`)
-    return schedule()
+    return schedule(orgCodes)
 })

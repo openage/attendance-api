@@ -74,7 +74,7 @@ describe('attendances service - getAttendanceStatus function', function () {
     describe('getAttendanceStatus ( for a person with missed swipe)', function () {
         let checkOut = testData.timeLog.new('09:45', 'checkOut');
         let attendance = testData.attendance.new();
-        attendance.status = 'missSwipe';
+        // attendance.status = 'missSwipe';
         attendance.checkOut = checkOut.time;
         attendance.recentMostTimeLog = checkOut;
         attendance.timeLogs.push(checkOut);

@@ -2,6 +2,7 @@
 let _ = require('underscore')
 var moment = require('moment')
 var async = require('async')
+var timeLogMapper = require('./timeLog')
 
 exports.toModel = (months, weeks, currentWeek, today) => {
     var model = {}
@@ -63,7 +64,8 @@ exports.toModel = (months, weeks, currentWeek, today) => {
         let totalPresentDays = 0
         model.currentMonth.weeks = []
         let allWeeks = []
-        let attendanceLength = 0; let count = 0
+        let attendanceLength = 0
+        let count = 0
         weeks.forEach(week => {
             let newWeek = []
             attendanceLength = week.attendances.length
@@ -151,36 +153,48 @@ exports.toTeamSummary = entities => {
     })
 }
 
-exports.monthlySummary = entities => {
-    return entities.map(entity => {
-        var model = {
-            id: entity._id.toString(),
-            name: entity.name,
-            code: entity.code,
-            designation: entity.designation,
-            picData: entity.picData,
-            picUrl: entity.picUrl === '' ? null : entity.picUrl,
-            absentDays: entity.absentDays,
-            presentDays: entity.presentDays
-        }
-
-        if (entity.leaveBalances) {
-            model.totalLeaveBalance = 0
-            entity.leaveBalances.forEach(leaveBalance => {
-                model.totalLeaveBalance = model.totalLeaveBalance + Math.trunc((leaveBalance.units / leaveBalance.leaveType.unitsPerDay) * 10) / 10
-            })
-        }
-        if (entity.shiftType) {
-            model.shiftType = {
-                id: entity.shiftType._id.toString(),
-                name: entity.shiftType.name,
-                code: entity.shiftType.code,
-                startTime: entity.shiftType.startTime,
-                endTime: entity.shiftType.endTime
-            }
-        }
-        return model
-    })
+exports.monthlySummary = entity => {
+    var model = {
+        id: entity._id.toString(),
+        name: entity.employeeModel.name,
+        code: entity.employeeModel.code,
+        biometricCode: entity.employeeModel.biometricCode,
+        designation: entity.employeeModel.designation,
+        department: entity.employeeModel.department,
+        picData: entity.employeeModel.picData,
+        picUrl: entity.employeeModel.picUrl === '' ? null : entity.employeeModel.picUrl,
+        absentDays: entity.attendanceSummary.absent,
+        presentDays: entity.attendanceSummary.present,
+        leaveDays: entity.attendanceSummary.leaves,
+        offDays: entity.attendanceSummary.weekOff,
+        holidayDays: entity.attendanceSummary.holiday
+    }
+    model.employee = {
+        id: entity.employeeModel.id,
+        name: entity.employeeModel.name,
+        code: entity.employeeModel.code,
+        picData: entity.employeeModel.picData,
+        picUrl: entity.employeeModel.picUrl === '' ? null : entity.employeeModel.picUrl,
+        biometricCode: entity.employeeModel.biometricCode,
+        designation: entity.employeeModel.designation,
+        department: entity.employeeModel.department
+    }
+    // if (entity.leaveBalances) {
+    //     model.totalLeaveBalance = 0
+    //     entity.leaveBalances.forEach(leaveBalance => {
+    //         model.totalLeaveBalance = model.totalLeaveBalance + Math.trunc((leaveBalance.units / leaveBalance.leaveType.unitsPerDay) * 10) / 10
+    //     })
+    // }
+    // if (entity.shiftType) {
+    //     model.shiftType = {
+    //         id: entity.shiftType._id.toString(),
+    //         name: entity.shiftType.name,
+    //         code: entity.shiftType.code,
+    //         startTime: entity.shiftType.startTime,
+    //         endTime: entity.shiftType.endTime
+    //     }
+    // }
+    return model
 }
 
 exports.logs = entities => {
@@ -236,17 +250,9 @@ exports.logs = entities => {
             }
         }
         model.timeLogs = []
-        if (entity.timeLogs) {
-            _(entity.timeLogs).each(item => {
-                if (item.device) {
-                    var ip = item.device.ip
-                }
-                model.timeLogs.push({
-                    id: item.id,
-                    type: item.type || ' ',
-                    time: item.time,
-                    source: item.source
-                })
+        if (entity.timeLogs && entity.timeLogs.length) {
+            entity.timeLogs.forEach(item => {
+                model.timeLogs.push(timeLogMapper.toModel(item))
             })
         }
         return model

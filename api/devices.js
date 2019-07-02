@@ -14,10 +14,35 @@ const offline = require('@open-age/offline-processor')
 const ip = require('../helpers/ip')
 const db = require('../models')
 
+const taskService = require('../services/tasks')
+
+const deviceService = require('../services/devices')
+
 let updateOrg = (device, org) => {
     org.devices.push(device.id)
     org.devicesVersion = org.devicesVersion ? (Number(org.devicesVersion) + 1).toString() : '1'
     return org.save()
+}
+
+exports.setLastSyncTime = async (req) => {
+    let task = {
+        data: req.body.date,
+        entity: 'config',
+        action: 'setLastSyncTime',
+        assignedTo: 'sync-service'
+    }
+
+    if (req.body.device) {
+        task.device = {
+            id: req.body.device
+        }
+    } else if (req.params.id) {
+        task.device = {
+            id: req.params.id
+        }
+    }
+    await taskService.create(task, req.context)
+    return 'Done'
 }
 
 exports.create = (req, res) => {
@@ -52,6 +77,22 @@ exports.create = (req, res) => {
             return res.data(mapper.toModel(device))
         })
         .catch(err => res.failure(err))
+}
+
+exports.setStatus = async (req) => {
+    let deviceId = req.params.id
+
+    switch (req.body.status) {
+    case 'online':
+        await deviceService.setOnline(deviceId, req.context)
+        break
+
+    case 'offline':
+        await deviceService.setOffline(deviceId, req.context)
+        break
+    }
+
+    return 'done'
 }
 
 exports.update = (req, res) => {
@@ -197,7 +238,7 @@ exports.syncTimeLogs = (req, res) => {
             .then(() => cb(null, filePath))
             .catch(err => cb(null, filePath))
     }, (filePath, cb) => {
-        offline.queue('timeLog', 'file', {
+        offline.queue('file-import', 'time-log', {
             filePath: filePath,
             source: 'biometricDevice',
             uploadedTime: new Date(),

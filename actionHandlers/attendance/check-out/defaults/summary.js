@@ -4,9 +4,6 @@ var monthly = require('../../../../services/monthly-summaries')
 const db = require('../../../../models')
 
 exports.process = async (attendance, context) => {
-    let entity = db.attendance.findById(attendance.id).populate({
-        path: 'employee'
-    })
-    await weekly.update(entity.ofDate, entity.employee, context)
-    await monthly.update(entity.ofDate, entity.employee, context)
+    await weekly.update(attendance.ofDate, attendance.employee, context)
+    await monthly.update(attendance.ofDate, attendance.employee, context)
 }

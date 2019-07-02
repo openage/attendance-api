@@ -3,8 +3,14 @@
 exports.toModel = (entity) => {
     const model = {
         id: entity.id,
+        entity: entity.entity,
         action: entity.action,
         date: entity.date,
+        progress: entity.progress,
+        data: entity.data,
+        meta: entity.meta,
+        error: entity.error,
+        assignedTo: entity.assignedTo,
         status: entity.status,
         employee: entity.employee,
         device: {}

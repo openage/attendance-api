@@ -9,6 +9,12 @@ const coverter = require('xlconverter')
 const formidable = require('formidable')
 const db = require('../models')
 
+const pager = require('../helpers/paging')
+const employeeService = require('../services/employee-getter')
+
+const leaveBalanceService = require('../services/leave-balances')
+const offline = require('@open-age/offline-processor')
+
 var leaveTypeManeger = function (org, leaveType, cb) {
     db.leaveType.findOneOrCreate({
         organization: org,
@@ -56,7 +62,10 @@ exports.createForMany = (req, res) => { // update for each employee in organizat
             if (!leaveType) {
                 throw new Error('no leaveType found')
             }
-            return db.employee.find({ organization: req.context.organization })
+            return db.employee.find({
+                organization: req.context.organization,
+                status: 'active'
+            })
                 .then(employees => {
                     return {
                         leaveType: leaveType,
@@ -108,20 +117,21 @@ exports.createForMany = (req, res) => { // update for each employee in organizat
         .catch(err => res.failure(err))
 }
 
-// exports.search = (req, res) => {
+exports.grant = async (req) => {
+    if (req.params.id !== 'all') {
+        let balance = await leaveBalanceService.grant(req.params.id, req.body.days, req.body.journal, req.context)
+        return mapper.toModel(balance)
+    } else {
+        let count = await leaveBalanceService.bulk(req.body.employees, req.body.leaveType, req.body.days, req.body.journal, req.context)
+        return `Granted '${req.body.days}' day(s) to ${count} employees`
+    }
+}
 
-//     let query = {
-//         employee: req.employee.id
-//     };
-//     db.leaveBalance.find(query)
-//         .populate('leaveType')
-//         .then(leaveBalances => {
-//             res.page(mapper.toSearchModel(leaveBalances));
-//         })
-//         .catch(err => {
-//             res.failure(err);
-//         });
-// };
+exports.runOvertimeRule = async (req) => {
+    let attendance = await db.attendance.findById(req.body.attendance.id)
+    await leaveBalanceService.runOvertimeRules(attendance, {}, req.context)
+    return 'Done'
+}
 
 exports.update = (req, res) => {
     let model = {
@@ -162,91 +172,84 @@ exports.update = (req, res) => {
         .catch(err => res.failure(err))
 }
 
-exports.getCurrentYearBal = (req, res) => {
-    let query = {
-        employee: req.query.id || req.employee.id
+exports.search = async (req) => {
+    let employeeId = req.query.id || req.query.employeeId
+
+    if (employeeId) {
+        if (employeeId === 'my') {
+            employeeId = req.context.employee.id
+        }
+
+        let leaveBalances = await leaveBalanceService.getByEmployee({
+            id: employeeId
+        }, {}, req.context)
+
+        return mapper.toSearchModel(leaveBalances)
     }
 
-    let leaveBalance = db.leaveBalance.find(query).populate('leaveType')
+    let pageInput = pager.extract(req)
+    let employees = await employeeService.search(req.query, pageInput, req.context)
+    let leaveTypes = await db.leaveType.find({
+        organization: req.context.organization
+    })
 
-    leaveBalance
-        .then(leaveBalances => {
-            return Promise.mapSeries(leaveBalances, bal => {
-                return db.leave.find({
-                    leaveType: bal.leaveType.id,
-                    employee: req.params.id,
-                    status: req.query.status,
-                    date: {
-                        $gte: moment().startOf('year'),
-                        $lte: moment().endOf('year')
-                    }
-                }).count()
-                    .then(leavesCount => {
-                        bal.approvedLeaves = leavesCount
-                        return bal
-                    })
-            })
-                .then(leaveBalances => {
-                    res.page(mapper.toSearchModel(leaveBalances))
-                })
-                .catch(err => {
-                    throw err
-                })
-        })
-        .catch(err => {
-            res.failure(err)
-        })
+    let models = []
+    for (const employee of employees) {
+        let leaveBalances = await leaveBalanceService.getByEmployee(employee, {
+            leaveTypes: leaveTypes
+        }, req.context)
+
+        let model = {
+            id: employee.id,
+            name: employee.name,
+            code: employee.code,
+            designation: employee.designation,
+            department: employee.department,
+            division: employee.division,
+            picData: employee.picData,
+            picUrl: employee.picUrl === '' ? null : employee.picUrl,
+            leaveBalances: mapper.toSearchModel(leaveBalances)
+        }
+        models.push(model)
+    }
+
+    let page = {
+        items: models
+    }
+
+    if (pageInput) {
+        page.total = await employeeService.count(req.query, req.context)
+        page.pageNo = pageInput.pageNo
+        page.pageSize = pageInput.limit
+    }
+
+    return page
 }
 
-exports.organizationLeaveBalances = (req, res) => {
-    let PageNo = Number(req.query.pageNo)
-    let pageSize = Number(req.query.pageSize)
-    let toPage = (PageNo || 1) * (pageSize || 10)
-    let fromPage = toPage - (pageSize || 10)
-    let pageLmt = (pageSize || 10)
-    let totalRecordsCount = 0
+exports.organizationLeaveBalances = async (req, res) => {
+    let pageInput = pager.extract(req)
+    let employees = await employeeService.search(req.query, pageInput, req.context)
+    let leaveTypes = await db.leaveType.find({
+        organization: req.context.organization
+    })
 
-    let query = {
-        organization: req.context.organization,
-        status: 'active'
+    for (const employee of employees) {
+        employee.leaveBalances = await leaveBalanceService.getByEmployee(employee, {
+            leaveTypes: leaveTypes
+        }, req.context)
     }
 
-    if (req.query.name) {
-        query.name = {
-            $regex: req.query.name,
-            $options: 'i'
-        }
+    let page = {
+        items: empMapper.toSearchModel(employees)
     }
 
-    if (req.query.tagId) {
-        query.tags = { $in: [global.toObjectId(req.query.tagId)] }
+    if (pageInput) {
+        page.total = await employeeService.count(req.query, req.context)
+        page.pageNo = pageInput.pageNo
+        page.pageSize = pageInput.limit
     }
 
-    Promise.all([
-        db.employee.find(query).count(),
-        db.employee.find(query)
-            .sort({ name: 1 })
-            .select('name code')
-            .skip(fromPage).limit(pageLmt)
-    ]).spread((totalRecordsCount, employees) => {
-        totalRecordsCount = totalRecordsCount
-        return Promise.mapSeries(employees, employee => {
-            return db.leaveBalance.find({ employee: employee.id })
-                .populate('leaveType')
-                .then(leaveBalances => {
-                    if (_.isEmpty(leaveBalances)) {
-                        return employee
-                    }
-                    employee.leaveBalances = leaveBalances
-                    return employee
-                })
-        })
-            .then(employees => res.page(
-                empMapper.toSearchModel(employees),
-                pageLmt,
-                PageNo,
-                totalRecordsCount))
-    }).catch(err => res.failure(err))
+    return page
 }
 
 exports.multiUpdateBalance = (req, res) => {
@@ -290,7 +293,7 @@ exports.multiUpdateBalance = (req, res) => {
                                     // }
 
                                     let unitsChange = (leaveType.unitsPerDay * Number(balance.days)) -
-                                            (leaveBalance.units || leaveBalance.unitsAvailed)
+                                        (leaveBalance.units || leaveBalance.unitsAvailed)
 
                                     // leaveBalance.unitsAvailed = leaveType.unitsPerDay * balance.days;
                                     leaveBalance.unitsAvailed = leaveBalance.unitsAvailed + unitsChange

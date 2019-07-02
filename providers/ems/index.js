@@ -35,7 +35,71 @@ const getEmployees = (config) => {
     return client.getPromise(config.url, args).then(response => response.data.items)
 }
 
-const formatEmployee = (emsModel) => {
+const formatDirectoryEmployee = (model) => {
+    if (model.code === null || model.code === undefined) {
+        return null
+    }
+
+    let entity = {
+        EmpDb_Emp_id: model._id,
+        code: model.code,
+        // displayCode: model.displayCode, // ?
+        dom: model.dom,
+        dol: model.dol,
+        doj: model.doj,
+
+        designation: model.designation,
+        department: model.department,
+        division: model.division,
+
+        email: model.email,
+        phone: model.phone,
+        status: model.status,
+
+        isDynamicShift: model.isDynamicShift,
+        shiftType: model.shiftType,
+
+        userType: model.type || 'normal'
+    }
+    if (model.config && model.config.contractor && model.config.contractor.name) {
+        entity.contractor = model.config.contractor.name
+    } else {
+        entity.contractor = ''
+    }
+    if (model.profile) {
+        let profile = model.profile
+        entity.name = `${profile.firstName} ${profile.lastName ? profile.lastName : ''}`
+        entity.name.trimRight()
+
+        entity.fatherName = profile.fatherName
+        entity.dob = profile.dob
+        entity.gender = profile.gender
+
+        if (profile.pic) {
+            entity.picUrl = profile.pic.url
+            entity.picData = profile.pic.thumbnail
+        }
+    }
+    entity.config = model.config || {}
+
+    if (entity.config.biometricCode) {
+        entity.biometricCode = entity.config.biometricCode
+    }
+
+    if (model.role) {
+        entity.role = model.role
+    }
+
+    if (model.supervisor) {
+        entity.supervisor = formatDirectoryEmployee(model.supervisor)
+    } else {
+        entity.supervisor = null
+    }
+
+    return entity
+}
+
+const formatEDEmployee = (emsModel) => {
     if (emsModel.code === null || emsModel.code === undefined) {
         return null
     }
@@ -45,7 +109,7 @@ const formatEmployee = (emsModel) => {
         name: emsModel.name,
         fatherName: emsModel.fatherName,
         code: emsModel.code,
-        displayCode: emsModel.displayCode,
+        biometricCode: emsModel.biometricCode, // TODO: obsolete
         dob: emsModel.dob,
         dom: emsModel.dom,
         dol: emsModel.dol,
@@ -61,18 +125,23 @@ const formatEmployee = (emsModel) => {
     }
 
     if (emsModel.designation && emsModel.designation.name) {
-        formatEmployee.designation = emsModel.designation.name
+        formattedEmployee.designation = emsModel.designation.name
     } else {
-        formatEmployee.designation = emsModel.designation
+        formattedEmployee.designation = emsModel.designation
     }
     if (emsModel.department && emsModel.department.name) {
-        formatEmployee.department = emsModel.department.name
+        formattedEmployee.department = emsModel.department.name
     } else {
-        formatEmployee.department = emsModel.department
+        formattedEmployee.department = emsModel.department
+    }
+    if (emsModel.division && emsModel.division.name) {
+        formattedEmployee.division = emsModel.division.name
+    } else {
+        formattedEmployee.division = emsModel.division
     }
 
     if (emsModel.supervisor) {
-        formattedEmployee.supervisor = formatEmployee(emsModel.supervisor)
+        formattedEmployee.supervisor = formatEDEmployee(emsModel.supervisor)
     } else {
         formattedEmployee.supervisor = null
     }
@@ -94,7 +163,11 @@ exports.fetch = (config) => {
     return getEmployees(parsedConfig(config)).then(employees => {
         logger.debug(`received '${employees.length}' employee(s)`)
         return _(employees).map((emp) => {
-            return formatEmployee(emp)
+            if (emp._id) {
+                return formatDirectoryEmployee(emp)
+            } else {
+                return formatEDEmployee(emp)
+            }
         })
     })
 }
@@ -109,4 +182,6 @@ exports.push = (changes, config) => {
     // TODO: implement this
 }
 
-exports.reform = formatEmployee
+exports.reform = formatDirectoryEmployee
+
+exports.reformV4 = formatEDEmployee

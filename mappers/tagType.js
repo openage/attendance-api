@@ -10,7 +10,7 @@ exports.toModel = entity => {
         _.each(entity.tags, tag => {
             model.tags.push({
                 id: tag._id.toString(),
-                name: tag.name
+                name: tag.name.toLowerCase()
             })
         })
     }

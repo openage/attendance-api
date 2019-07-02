@@ -17,10 +17,14 @@ const updationScheme = require('../helpers/updateEntities')
 const ip = require('../helpers/ip')
 const offline = require('@open-age/offline-processor')
 const teams = require('../services/teams')
+const timeLogsService = require('../services/time-logs')
 const client = new require('node-rest-client-promise').Client()
 const locationConfig = require('config').get('location')
 const db = require('../models')
 const attendanceService = require('../services/attendances')
+const monthlyService = require('../services/monthly-summaries')
+
+const timeLogsApi = require('../api/timeLogs')
 
 const dates = require('../helpers/dates')
 
@@ -132,7 +136,10 @@ var xlBuilder = (fileName, ofDate, getExtraHours, attendances, orgDetails) => {
 
     sheet1.width(1, 11)
 
-    sheet1.font(14, 1, { bold: 'true', sz: '24' })
+    sheet1.font(14, 1, {
+        bold: 'true',
+        sz: '24'
+    })
     sheet1.align(14, 1, 'center')
     sheet1.set(14, 1, `${orgDetails.orgName}`)
 
@@ -140,42 +147,66 @@ var xlBuilder = (fileName, ofDate, getExtraHours, attendances, orgDetails) => {
     // sheet1.align(14, 2, 'center');
     // sheet1.set(14 , 2, `C-133, Phase-8a, Industrial Area, Mohali, Punjab`);
 
-    sheet1.font(14, 3, { bold: 'true' })
+    sheet1.font(14, 3, {
+        bold: 'true'
+    })
     sheet1.align(14, 3, 'center')
     sheet1.set(14, 3, `Monthly Performance Report`)
 
-    sheet1.font(14, 4, { bold: 'true' })
+    sheet1.font(14, 4, {
+        bold: 'true'
+    })
     sheet1.align(14, 4, 'center')
     sheet1.set(14, 4, `${summaryOf}`)
 
-    sheet1.font(25, 1, { bold: 'true' })
+    sheet1.font(25, 1, {
+        bold: 'true'
+    })
     sheet1.align(25, 1, 'left')
     sheet1.align(25, 1, 'bottom')
     sheet1.set(25, 1, `Dated:${moment().format('DD-MM-YYYY')}`)
 
-    sheet1.font(25, 2, { bold: 'true' })
+    sheet1.font(25, 2, {
+        bold: 'true'
+    })
     sheet1.align(25, 2, 'left')
     sheet1.set(25, 2, `Download by:-${orgDetails.downloaderName}`)
 
-    sheet1.font(25, 3, { bold: 'true' })
+    sheet1.font(25, 3, {
+        bold: 'true'
+    })
     sheet1.align(25, 3, 'left')
     sheet1.set(25, 3, `${orgDetails.downloaderEmail}`)
 
-    sheet1.font(25, 4, { bold: 'true' })
+    sheet1.font(25, 4, {
+        bold: 'true'
+    })
     sheet1.align(25, 4, 'left')
     sheet1.set(25, 4, `${orgDetails.downloaderPhone}`)
 
     attendances.forEach(data => {
-        sheet1.font(1, 6 + rowsUsed, { bold: 'true', sz: '10' })
+        sheet1.font(1, 6 + rowsUsed, {
+            bold: 'true',
+            sz: '10'
+        })
         sheet1.set(1, 6 + rowsUsed, `EmpCode:${data.employee.code}`)
 
-        sheet1.font(3, 6 + rowsUsed, { bold: 'true', sz: '10' })
+        sheet1.font(3, 6 + rowsUsed, {
+            bold: 'true',
+            sz: '10'
+        })
         sheet1.set(3, 6 + rowsUsed, `EmpName:${data.employee.name}`)
 
-        sheet1.font(9, 6 + rowsUsed, { bold: 'true', sz: '10' })
+        sheet1.font(9, 6 + rowsUsed, {
+            bold: 'true',
+            sz: '10'
+        })
         sheet1.set(9, 6 + rowsUsed, `Designation:${data.employee.designation}`)
 
-        sheet1.font(16, 6 + rowsUsed, { bold: 'true', sz: '10' })
+        sheet1.font(16, 6 + rowsUsed, {
+            bold: 'true',
+            sz: '10'
+        })
         sheet1.set(16, 6 + rowsUsed, `Present:${data.monthLog ? data.monthLog.attendanceCount : 0}`)
 
         let onDuty = 0
@@ -199,16 +230,28 @@ var xlBuilder = (fileName, ofDate, getExtraHours, attendances, orgDetails) => {
             })
         }
 
-        sheet1.font(19, 6 + rowsUsed, { bold: 'true', sz: '10' })
+        sheet1.font(19, 6 + rowsUsed, {
+            bold: 'true',
+            sz: '10'
+        })
         sheet1.set(19, 6 + rowsUsed, `onDuty:${onDuty}`)
 
-        sheet1.font(22, 6 + rowsUsed, { bold: 'true', sz: '10' })
+        sheet1.font(22, 6 + rowsUsed, {
+            bold: 'true',
+            sz: '10'
+        })
         sheet1.set(22, 6 + rowsUsed, `paidLeaves:${paidLeave}`)
 
-        sheet1.font(25, 6 + rowsUsed, { bold: 'true', sz: '10' })
+        sheet1.font(25, 6 + rowsUsed, {
+            bold: 'true',
+            sz: '10'
+        })
         sheet1.set(25, 6 + rowsUsed, `lossOfPay:${lossOfPay}`)
 
-        sheet1.font(28, 6 + rowsUsed, { bold: 'true', sz: '10' })
+        sheet1.font(28, 6 + rowsUsed, {
+            bold: 'true',
+            sz: '10'
+        })
         // if (data.monthLog === null) {
         //     data.monthLog == 0
         // }
@@ -218,17 +261,44 @@ var xlBuilder = (fileName, ofDate, getExtraHours, attendances, orgDetails) => {
             sheet1.set(28, 6 + rowsUsed, `HoursWorked:${data.monthLog ? Math.trunc(data.monthLog.hoursWorked) : 'NA'}`)
         }
 
-        sheet1.font(1, 7 + rowsUsed, { bold: 'true', sz: '10' })
-        sheet1.font(1, 8 + rowsUsed, { bold: 'true', sz: '10' })
-        sheet1.font(1, 9 + rowsUsed, { bold: 'true', sz: '10' })
-        sheet1.font(1, 10 + rowsUsed, { bold: 'true', sz: '10' })
-        sheet1.font(1, 11 + rowsUsed, { bold: 'true', sz: '10' })
+        sheet1.font(1, 7 + rowsUsed, {
+            bold: 'true',
+            sz: '10'
+        })
+        sheet1.font(1, 8 + rowsUsed, {
+            bold: 'true',
+            sz: '10'
+        })
+        sheet1.font(1, 9 + rowsUsed, {
+            bold: 'true',
+            sz: '10'
+        })
+        sheet1.font(1, 10 + rowsUsed, {
+            bold: 'true',
+            sz: '10'
+        })
+        sheet1.font(1, 11 + rowsUsed, {
+            bold: 'true',
+            sz: '10'
+        })
 
         if (getExtraHours.byShiftEnd || getExtraHours.byShiftLength) {
-            sheet1.font(1, 12 + rowsUsed, { bold: 'true', sz: '10' })
-            sheet1.font(1, 13 + rowsUsed, { bold: 'true', sz: '10' })
-            sheet1.font(1, 14 + rowsUsed, { bold: 'true', sz: '10' })
-            sheet1.font(1, 15 + rowsUsed, { bold: 'true', sz: '10' })
+            sheet1.font(1, 12 + rowsUsed, {
+                bold: 'true',
+                sz: '10'
+            })
+            sheet1.font(1, 13 + rowsUsed, {
+                bold: 'true',
+                sz: '10'
+            })
+            sheet1.font(1, 14 + rowsUsed, {
+                bold: 'true',
+                sz: '10'
+            })
+            sheet1.font(1, 15 + rowsUsed, {
+                bold: 'true',
+                sz: '10'
+            })
         }
 
         sheet1.set(1, 7 + rowsUsed, `Date`)
@@ -249,22 +319,51 @@ var xlBuilder = (fileName, ofDate, getExtraHours, attendances, orgDetails) => {
             sheet1.width(1 + date, 4.0)
             let hourDetails
             let attendance = null
-            if (data.monthLog && data.monthLog.attendances) { attendance = getAttendance(date, data.monthLog.attendances) }
+            if (data.monthLog && data.monthLog.attendances) {
+                attendance = getAttendance(date, data.monthLog.attendances)
+            }
             if (getExtraHours.byShiftEnd || getExtraHours.byShiftLength) {
                 if (attendance) {
                     attendance.getExtraHours = getExtraHours
                     hourDetails = getExtraWorkDetails(attendance)
                 }
             }
-            sheet1.font(1 + date, 7 + rowsUsed, { bold: 'true', sz: '10' })
-            sheet1.font(1 + date, 8 + rowsUsed, { bold: 'true', sz: '7' })
-            sheet1.font(1 + date, 9 + rowsUsed, { bold: 'true', sz: '7' })
-            sheet1.font(1 + date, 10 + rowsUsed, { bold: 'true', sz: '10' })
-            sheet1.font(1 + date, 11 + rowsUsed, { bold: 'true', sz: '7' })
-            sheet1.font(1 + date, 12 + rowsUsed, { bold: 'true', sz: '7' })
-            sheet1.font(1 + date, 13 + rowsUsed, { bold: 'true', sz: '7' })
-            sheet1.font(1 + date, 14 + rowsUsed, { bold: 'true', sz: '7' })
-            sheet1.font(1 + date, 15 + rowsUsed, { bold: 'true', sz: '7' })
+            sheet1.font(1 + date, 7 + rowsUsed, {
+                bold: 'true',
+                sz: '10'
+            })
+            sheet1.font(1 + date, 8 + rowsUsed, {
+                bold: 'true',
+                sz: '7'
+            })
+            sheet1.font(1 + date, 9 + rowsUsed, {
+                bold: 'true',
+                sz: '7'
+            })
+            sheet1.font(1 + date, 10 + rowsUsed, {
+                bold: 'true',
+                sz: '10'
+            })
+            sheet1.font(1 + date, 11 + rowsUsed, {
+                bold: 'true',
+                sz: '7'
+            })
+            sheet1.font(1 + date, 12 + rowsUsed, {
+                bold: 'true',
+                sz: '7'
+            })
+            sheet1.font(1 + date, 13 + rowsUsed, {
+                bold: 'true',
+                sz: '7'
+            })
+            sheet1.font(1 + date, 14 + rowsUsed, {
+                bold: 'true',
+                sz: '7'
+            })
+            sheet1.font(1 + date, 15 + rowsUsed, {
+                bold: 'true',
+                sz: '7'
+            })
             sheet1.set(1 + date, 7 + rowsUsed, `${date}`)
 
             if (attendance) {
@@ -329,7 +428,10 @@ var xlBuilder = (fileName, ofDate, getExtraHours, attendances, orgDetails) => {
         workbook.save(function (err) {
             if (!err) {
                 console.log('congratulations, your workbook created')
-                return resolve({ isCreated: true, message: 'attendance sheet successfully created' })
+                return resolve({
+                    isCreated: true,
+                    message: 'attendance sheet successfully created'
+                })
             }
             workbook.cancel()
             return reject(new Error('attendance sheet not created'))
@@ -344,41 +446,73 @@ var xlBuilderSingleDay = (fileName, ofDate, getExtraHours, employees, organizati
     var sheet1 = workbook.createSheet('Attendence', 17 * totalEmployees, totalRows)
     var summaryOf = moment(ofDate).startOf('month').format('MMMM Do')
 
-    sheet1.font(4, 1, { name: 'Impact', bold: 'true', sz: '24' })
+    sheet1.font(4, 1, {
+        name: 'Impact',
+        bold: 'true',
+        sz: '24'
+    })
     sheet1.set(4, 1, `${organizationName}`)
 
-    sheet1.font(1, 2, { bold: 'true' })
+    sheet1.font(1, 2, {
+        bold: 'true'
+    })
     sheet1.set(1, 2, `Date`)
 
-    sheet1.font(4, 2, { bold: 'true' })
+    sheet1.font(4, 2, {
+        bold: 'true'
+    })
     sheet1.set(4, 2, `${moment(ofDate).format('MMMM Do YYYY')}`)
 
-    sheet1.font(1, 3, { bold: 'true' })
+    sheet1.font(1, 3, {
+        bold: 'true'
+    })
     sheet1.set(1, 3, `Code`)
-    sheet1.font(2, 3, { bold: 'true' })
+    sheet1.font(2, 3, {
+        bold: 'true'
+    })
     sheet1.set(2, 3, `Name`)
-    sheet1.font(3, 3, { bold: 'true' })
+    sheet1.font(3, 3, {
+        bold: 'true'
+    })
     sheet1.set(3, 3, `Designation`)
-    sheet1.font(4, 3, { bold: 'true' })
+    sheet1.font(4, 3, {
+        bold: 'true'
+    })
     sheet1.set(4, 3, `Department`)
-    sheet1.font(5, 3, { bold: 'true' })
+    sheet1.font(5, 3, {
+        bold: 'true'
+    })
     sheet1.set(5, 3, `Shift-Type`)
-    sheet1.font(6, 3, { bold: 'true' })
+    sheet1.font(6, 3, {
+        bold: 'true'
+    })
     sheet1.set(6, 3, `CheckIn`)
-    sheet1.font(7, 3, { bold: 'true' })
+    sheet1.font(7, 3, {
+        bold: 'true'
+    })
     sheet1.set(7, 3, `CheckOut`)
-    sheet1.font(8, 3, { bold: 'true' })
+    sheet1.font(8, 3, {
+        bold: 'true'
+    })
     sheet1.set(8, 3, `Status`)
-    sheet1.font(9, 3, { bold: 'true' })
+    sheet1.font(9, 3, {
+        bold: 'true'
+    })
     sheet1.set(9, 3, `Hours Worked`)
     if (getExtraHours.byShiftEnd || getExtraHours.byShiftLength) {
-        sheet1.font(10, 3, { bold: 'true' })
+        sheet1.font(10, 3, {
+            bold: 'true'
+        })
         sheet1.set(10, 3, `Shift Hours`)
-        sheet1.font(11, 3, { bold: 'true' })
+        sheet1.font(11, 3, {
+            bold: 'true'
+        })
         sheet1.set(11, 3, `Extra Hours`)
     }
     if (getExtraHours.byShiftLength) {
-        sheet1.font(12, 3, { bold: 'true' })
+        sheet1.font(12, 3, {
+            bold: 'true'
+        })
         sheet1.set(12, 3, 'Short Hours')
     }
 
@@ -445,7 +579,10 @@ var xlBuilderSingleDay = (fileName, ofDate, getExtraHours, employees, organizati
         workbook.save(function (err) {
             if (!err) {
                 console.log('congratulations, your workbook created')
-                return resolve({ isCreated: true, message: 'attendance sheet successfully created' })
+                return resolve({
+                    isCreated: true,
+                    message: 'attendance sheet successfully created'
+                })
             }
             workbook.cancel()
             return reject(new Error('attendance sheet not created'))
@@ -488,20 +625,28 @@ var dayStatus = (shiftType, date) => {
 
 exports.getCurrentDate = (req, res) => {
     let currentDate = moment().utc().toDate()
-    res.data({ currentDate: currentDate })
+    res.data({
+        currentDate: currentDate
+    })
 }
 
 exports.get = async (req) => {
     let where = {}
 
     let date = dates.date(req.params.id).bod()
-    let employee = { id: req.query.employeeId }
+    let employee = {
+        id: req.query.employeeId
+    }
 
-    let attendance = await attendanceService.getAttendanceByDate(date, employee, req.context)
+    let attendance = await attendanceService.getAttendanceByDate(date, employee, {
+        create: true
+    }, req.context)
+
+    attendance.passes = timeLogsService.getPasses(attendance, req.context)
     return mapper.toModel(attendance)
 }
 
-exports.search = (req, res) => {
+exports.search = async (req) => {
     let fromDate
     let toDate
     let employeeId = req.query.employee ? req.query.employee : req.employee.id
@@ -531,17 +676,18 @@ exports.search = (req, res) => {
         query.ofDate.$lt = toDate
     }
 
-    db.attendance.find(query)
+    let attendances = await db.attendance.find(query)
+        .populate('timeLogs')
         .populate({
-            model: 'shift',
             path: 'shift',
             populate: {
-                model: 'holiday',
-                path: 'holiday'
+                path: 'shiftType holiday'
             }
-        }).sort({ ofDate: 1 })
-        .then(attendances => res.page(mapper.toSearchModel(attendances)))
-        .catch(err => res.failure(err))
+        }).sort({
+            ofDate: 1
+        })
+
+    return mapper.toSearchModel(attendances)
 }
 
 exports.create = async (req) => {
@@ -553,7 +699,9 @@ exports.create = async (req) => {
 
     let date = dates.date(req.body.ofDate).bod()
 
-    let attendance = await attendanceService.getAttendanceByDate(date, req.body.employee, req.context)
+    let attendance = await attendanceService.getAttendanceByDate(date, req.body.employee, {
+        create: true
+    }, req.context)
 
     attendance.status = status
 
@@ -574,7 +722,9 @@ exports.create = async (req) => {
 exports.update = async (req) => {
     let attendance
     if (req.body.status === 'weekOff') {
-        attendance = await attendanceService.markOffDay({ id: req.params.id }, req.context)
+        attendance = await attendanceService.markOffDay({
+            id: req.params.id
+        }, req.context)
     }
     return mapper.toModel(attendance)
 }
@@ -605,10 +755,10 @@ exports.updateByExtServer = (req, res) => {
         model.status = 'present'
         model.hoursWorked = moment(model.checkOut).diff(moment(model.checkIn), 'hours') || 0
     }
-    if (!model.checkIn || !model.checkOut) {
-        model.hoursWorked = 0
-        model.status = 'missSwipe'
-    }
+    // if (!model.checkIn || !model.checkOut) {
+    //     model.hoursWorked = 0
+    //     model.status = 'missSwipe'
+    // }
 
     let fromDate = moment(ofDate) // for perticular punchDate
         .set('hour', 0).set('minute', 0).set('second', 0).set('millisecond', 0)._d
@@ -622,7 +772,10 @@ exports.updateByExtServer = (req, res) => {
         .set('second', 0)
         .set('millisecond', 0)
 
-    db.employee.findOne({ code: employeeCode, organization: req.context.organization })
+    db.employee.findOne({
+        code: employeeCode,
+        organization: req.context.organization
+    })
         .populate('shiftType')
         .then(employee => {
             if (!employee) {
@@ -634,7 +787,10 @@ exports.updateByExtServer = (req, res) => {
             model.employee = employee
             return getDayStatus(employee.shiftType, ofDate)
                 .then(dayData => {
-                    return { dayData: dayData, employee: employee }
+                    return {
+                        dayData: dayData,
+                        employee: employee
+                    }
                 })
         })
         .then(data => {
@@ -655,14 +811,19 @@ exports.updateByExtServer = (req, res) => {
                     .set('millisecond', 0)._d
             })
                 .then(shift => {
-                    return { employee: data.employee, shift: shift.result }
+                    return {
+                        employee: data.employee,
+                        shift: shift.result
+                    }
                 })
         })
         .then(data => {
             return db.attendance.findOrCreate({
                 employee: data.employee,
                 shift: data.shift
-            }, model, { upsert: true })
+            }, model, {
+                upsert: true
+            })
         })
         .then(attendance => {
             // TODO: Update summaries too
@@ -785,24 +946,56 @@ exports.attendanceExtractor = (req, res) => {
         _.each(queryTags, (tagId) => {
             tagIds.push(global.toObjectId(tagId))
         })
-        query.tags = { $in: tagIds }
-    }
-
-    if (req.query.code) {
-        query.code = {
-            $regex: req.query.code,
-            $options: 'i'
+        query.tags = {
+            $in: tagIds
         }
     }
 
-    if (req.query.shiftType) {
-        query.shiftType = global.toObjectId(req.query.shiftType)
+    if (req.query.code) {
+        query.code = req.query.code
+    }
+
+    if (req.query.tagIds) {
+        let tagIds = []
+        let queryTags = req.query.tagIds.split(',')
+        _.each(queryTags, (tagId) => {
+            tagIds.push(global.toObjectId(tagId))
+        })
+        query['emp.tags'] = {
+            $in: tagIds
+        }
+    }
+
+    if (req.query.action) {
+        let actionList = []
+        let queryActionList = req.query.action.split(',')
+        _.each(queryActionList, (action) => {
+            actionList.push(action.toLowerCase())
+        })
+        query['needsAction'] = {
+            $in: actionList
+        }
+    }
+
+    if (req.query.shiftTypeId) {
+        let shiftIds = []
+        let queryShifts = req.query.shiftTypeId.split(',')
+        _.each(queryShifts, (shift) => {
+            shiftIds.push(global.toObjectId(shift))
+        })
+        query['emp.shiftType'] = {
+            $in: shiftIds
+        }
     }
 
     db.employee.aggregate([{
         $match: query
     }, {
-        $project: { name: 1, code: 1, designation: 1 }
+        $project: {
+            name: 1,
+            code: 1,
+            designation: 1
+        }
     }])
         .then(employees => {
             employees = employees.sort((a, b) => {
@@ -883,15 +1076,16 @@ exports.attendanceMonthlyPdf = (req, res) => {
     let toDate = ofDate ? moment(ofDate).endOf('month') : moment().endOf('month')
 
     if (req.query.code) {
-        query.code = {
-            $regex: req.query.code,
-            $options: 'i'
-        }
+        query.code = req.query.code
     }
     db.employee.aggregate([{
         $match: query
     }, {
-        $project: { name: 1, code: 1, designation: 1 }
+        $project: {
+            name: 1,
+            code: 1,
+            designation: 1
+        }
     }])
         .then(employees => {
             employees = employees.sort((a, b) => {
@@ -983,7 +1177,16 @@ exports.attendanceMonthlyPdf = (req, res) => {
 
                     db.attendance.find({
                         employee: employee,
-                        $or: [{ status: 'present' }, { status: 'halfday' }, { status: 'missSwipe' }],
+                        $or: [{
+                            status: 'present'
+                        }, {
+                            status: 'halfday'
+                        }
+                            //  {
+                            //     status: 'missSwipe'
+                            //
+                            // }
+                        ],
                         ofDate: {
                             $gte: fromDate,
                             $lte: toDate
@@ -1038,162 +1241,56 @@ exports.attendanceMonthlyPdf = (req, res) => {
         })
 }
 
-exports.getMonthlySummary = (req, res) => {
-    let query = {
-        organization: req.context.organization,
-        status: 'active'
-    }
+exports.getMonthlySummary = async (req) => {
+    let pageInput = paging.extract(req)
 
-    let ofDate = req.query.ofDate
-
-    let fromDate = ofDate ? moment(ofDate).startOf('month') : moment().startOf('month')
-
-    let toDate = ofDate ? moment(ofDate).endOf('month') : moment().endOf('month')
-
-    let PageNo = Number(req.query.pageNo)
-    let pageSize = Number(req.query.pageSize)
-    let toPage = (PageNo || 1) * (pageSize || 10)
-    let fromPage = toPage - (pageSize || 10)
-    let pageLmt = (pageSize || 10)
-    let totalRecordsCount = 0
-
-    if (req.query.name) {
-        query.name = {
-            $regex: req.query.name,
-            $options: 'i'
+    let params = {
+        dates: {
+            from: req.query.ofDate || new Date()
+        },
+        employee: {
+            name: req.query.name,
+            code: req.query.code,
+            supervisor: req.query.supervisorId
         }
     }
 
-    if (req.query.designation) {
-        query.designation = {
-            $regex: req.query.designation,
-            $options: 'i'
-        }
+    if (req.query.departments) {
+        params.departments = req.query.departments.split(',')
     }
 
-    if (req.query.code) {
-        query.code = {
-            $regex: req.query.code,
-            $options: 'i'
-        }
+    if (req.query.designations) {
+        params.designations = req.query.designations.split(',')
+    }
+    if (req.query.userTypes) {
+        params.userTypes = req.query.userTypes.split(',')
+    }
+    if (req.query.divisions) {
+        params.divisions = req.query.divisions.split(',')
     }
 
-    if (req.query.shiftType) {
-        query.shiftType = req.query.shiftType
+    if (req.query.contractors) {
+        params.contractors = req.query.contractors.split(',')
     }
 
-    if (req.query.tagIds) {
-        let tagIds = []
-        let queryTags = req.query.tagIds.split(',')
-        _.each(queryTags, (tagId) => {
-            tagIds.push(global.toObjectId(tagId))
-        })
-        query.tags = { $in: tagIds }
+    pageInput = pageInput || {}
+
+    pageInput.columns = [
+        'employee',
+        'employeeModel',
+        'leavesSummary',
+        'attendanceSummary',
+        'shiftSummary'
+    ]
+
+    let page = await monthlyService.search(params, pageInput, req.context)
+
+    return {
+        items: page.items.map(item => summaryMapper.monthlySummary(item)),
+        total: page.total,
+        pageNo: page.pageNo,
+        pageSize: page.pageSize
     }
-
-    Promise.all([
-        db.employee.find(query).count(),
-        db.employee.find(query).sort({ name: 1 })
-            .select('name code designation picUrl shiftType')
-            .populate('shiftType')
-            .lean().skip(fromPage).limit(pageLmt)
-    ])
-        .spread((count, employees) => {
-            totalRecordsCount = count
-            Promise.mapSeries(employees, employee => {
-                let leaveBalances = dbQuery.getTotalLeaveBalance(employee._id)
-                let monthPresentCount = db.attendance.find({
-                    employee: employee,
-                    ofDate: {
-                        $gte: fromDate,
-                        $lt: toDate
-                    },
-                    status: {
-                        $in: ['present', 'missSwipe', 'halfday']
-                    }
-                }).count()
-                let absentDays = db.attendance.find({
-                    employee: employee,
-                    ofDate: {
-                        $gte: fromDate,
-                        $lt: toDate
-                    },
-                    status: {
-                        $eq: 'absent'
-                    }
-                }).populate({
-                    path: 'shift',
-                    match: {
-                        status: 'working'
-                    }
-                }).lean()
-
-                return Promise.all([monthPresentCount, leaveBalances, absentDays]).spread((monthSummary, leaveBalances, absentDays) => {
-                    employee.presentDays = monthSummary || 0
-                    employee.absentDays = _.filter(absentDays, day => day.shift !== null).length
-                    employee.leaveBalances = leaveBalances
-
-                    return employee
-                })
-            }).then(employees => {
-                return res.page(summaryMapper.monthlySummary(employees), pageLmt, PageNo, totalRecordsCount)
-            })
-        })
-        .catch(err => res.failure(err))
-}
-
-const extractQuery = req => {
-    let ofDate = req.query.ofDate || new Date()
-    let fromDate = dates.date(ofDate).bod()
-    let toDate = dates.date(ofDate).eod()
-
-    let query = {
-        'emp.status': 'active',
-        'emp.organization': global.toObjectId(req.context.organization.id),
-        'ofDate': {
-            $gte: fromDate,
-            $lt: toDate
-        }
-    }
-
-    if (req.query.name) {
-        query['emp.name'] = {
-            $regex: req.query.name,
-            $options: 'i'
-        }
-    }
-
-    if (req.query.status) {
-        if (req.query.status.toLowerCase() == 'present') {
-            req.query.status = /present|checkedin|checked-in-again/
-        }
-        query.status = {
-            $regex: req.query.status,
-            $options: 'i'
-        }
-    }
-
-    if (req.query.code) {
-        query['emp.code'] = {
-            $regex: req.query.code,
-            $options: 'i'
-        }
-    }
-
-    if (req.query.tagIds) {
-        let tagIds = []
-        let queryTags = req.query.tagIds.split(',')
-        _.each(queryTags, (tagId) => {
-            tagIds.push(global.toObjectId(tagId))
-        })
-        query['emp.tags'] = { $in: tagIds }
-    }
-
-    if (req.query.shiftTypeId) {
-        query['emp.shiftType'] = global.toObjectId(req.query.shiftTypeId)
-    }
-
-    return query
 }
 
 exports.regenerate = async (req) => {
@@ -1201,7 +1298,9 @@ exports.regenerate = async (req) => {
         let attendance = await attendanceService.reset({
             id: req.body.id
         }, {
-            removeWeekOff: req.body.removeWeekOff
+            removeWeekOff: req.body.removeWeekOff,
+            adjustTimeLogs: req.body.adjustTimeLogs,
+            recalculateShift: req.body.recalculateShift
         }, req.context)
 
         return mapper.toModel(attendance)
@@ -1210,354 +1309,364 @@ exports.regenerate = async (req) => {
     let date = dates.date(req.query.date || req.body.date).bod()
     let period = req.query.period || req.body.period || 'day'
 
-    await offline.queue(period === 'month' ? 'work-month' : 'day', 'regenerate', {
+    let entity = {
         date: date
+    }
+
+    if (req.body.employee && req.employee.id) {
+        entity.employee = {
+            id: req.body.employee.id
+        }
+    }
+
+    await offline.queue(period === 'month' ? 'work-month' : 'work-day', 'regenerate', entity, req.context)
+
+    return {
+        message: 'submitted'
+    }
+}
+
+const extractQuery = (params, context) => {
+    let tagIds = []
+    let ofDate = params.ofDate
+    let fromDate = dates.date(ofDate).bod()
+    let toDate = dates.date(ofDate).eod()
+    let query = {
+        'emp.status': 'active',
+        'emp.organization': global.toObjectId(context.organization.id),
+        'ofDate': {
+            $gte: fromDate,
+            $lt: toDate
+        }
+    }
+
+    if (params.name) {
+        query['emp.name'] = {
+            $regex: params.name,
+            $options: 'i'
+        }
+    }
+
+    if (params.code) {
+        query['emp.code'] = params.code
+    } else {
+        query['emp.code'] = { $ne: 'default' }
+    }
+
+    if (params.supervisorId) {
+        query['emp.supervisor'] = global.toObjectId(params.supervisorId)
+    }
+
+    if (params.userTypes) {
+        let userTypesList = []
+        let queryUserTypesList = params.userTypes.split(',')
+        _.each(queryUserTypesList, (userType) => {
+            userTypesList.push(userType)
+        })
+        query['emp.userType'] = {
+            $in: userTypesList
+        }
+    }
+
+    if (params.shiftTypeId) {
+        let shiftIds = []
+        let queryShifts = params.shiftTypeId.split(',')
+        queryShifts.forEach(shift => {
+            shiftIds.push(global.toObjectId(shift))
+        })
+        query['emp.shiftType'] = {
+            $in: shiftIds
+        }
+    }
+
+    if (params.departments) {
+        let departmentList = []
+        let queryDepartmentList = params.departments.split(',')
+        _.each(queryDepartmentList, (department) => {
+            departmentList.push(department)
+        })
+        query['emp.department'] = {
+            $in: departmentList
+        }
+    }
+
+    if (params.contractors) {
+        let contractorList = []
+        let queryContractorsList = params.contractors.split(',')
+        _.each(queryContractorsList, (contract) => {
+            contractorList.push(contract.toLowerCase())
+        })
+        query['emp.contractor'] = {
+            $in: contractorList
+        }
+    }
+
+    if (params.divisions) {
+        let divisionList = []
+        let queryDivisionList = params.divisions.split(',')
+        _.each(queryDivisionList, (division) => {
+            divisionList.push(division)
+        })
+        query['emp.division'] = {
+            $in: divisionList
+        }
+    }
+
+    if (params.designations) {
+        let designationList = []
+        let queryDesignationList = params.designations.split(',')
+        _.each(queryDesignationList, (designation) => {
+            designationList.push(designation)
+        })
+        query['emp.designation'] = {
+            $in: designationList
+        }
+    }
+
+    if (params.status) {
+        let statusList = []
+        let queryStatusList = params.status.split(',')
+        _.each(queryStatusList, (status) => {
+            if (status === 'halfDay') {
+                status = 'present'
+                query.$or = [{
+                    firstHalfStatus: 'A'
+                }, {
+                    secondHalfStatus: 'A'
+                }]
+            }
+            if ((statusList.length = 1 && statusList[0] === 'present') && status === 'present') {
+                return 0
+            } else {
+                statusList.push(status)
+            }
+        })
+        query['status'] = {
+            $in: statusList
+        }
+    }
+
+    if (params.hours) {
+        let hoursList = []
+        let queryhoursList = params.hours.split(',')
+        _.each(queryhoursList, (hours) => {
+            hoursList.push(hours.toLowerCase())
+        })
+        query['hours'] = {
+            $in: hoursList
+        }
+    }
+    if (params.clockedGt) {
+        let minutes = (params.clockedGt) * 60
+        query['minutes'] = {
+            $gte: minutes
+        }
+    }
+
+    if (params.clockedLt) {
+        let minutes = (params.clockedLt) * 60
+        query['minutes'] = {
+            $lte: minutes
+        }
+    }
+
+    if (params.checkInStatus) {
+        let checkInStatusList = []
+        let queryCheckInStatusList = params.checkInStatus.split(',')
+        _.each(queryCheckInStatusList, (checkInStatus) => {
+            checkInStatusList.push(checkInStatus.toLowerCase())
+        })
+        query['checkInStatus'] = {
+            $in: checkInStatusList
+        }
+        query['status'] = 'present'
+    }
+
+    if (params.checkInAfter) {
+        let t = params.checkInAfter.split(':')
+        let time = moment(ofDate).hours(parseInt(t[0])).minutes(parseInt(t[1])).toDate()
+        query['checkIn'] = {
+            $gte: time
+        }
+    }
+
+    if (params.checkInBefore) {
+        let t = params.checkInBefore.split(':')
+        let time = moment(ofDate).hours(parseInt(t[0])).minutes(parseInt(t[1])).toDate()
+        query['checkIn'] = {
+            $lte: time
+        }
+    }
+
+    if (params.checkOutStatus) {
+        let checkOutStatusList = []
+        let queryCheckOutStatusList = params.checkOutStatus.split(',')
+        _.each(queryCheckOutStatusList, (checkOutStatus) => {
+            checkOutStatusList.push(checkOutStatus.toLowerCase())
+        })
+        query['checkOutStatus'] = {
+            $in: checkOutStatusList
+        }
+        query['status'] = 'present'
+    }
+
+    if (params.checkOutAfter) {
+        let t = params.checkOutAfter.split(':')
+        let time = moment(ofDate).hours(parseInt(t[0])).minutes(parseInt(t[1])).toDate()
+        query['checkOut'] = {
+            $gte: time
+        }
+    }
+
+    if (params.checkOutBefore) {
+        let t = params.checkOutBefore.split(':')
+        let time = moment(ofDate).hours(parseInt(t[0])).minutes(parseInt(t[1])).toDate()
+        query['checkOut'] = {
+            $lte: time
+        }
+    }
+
+    return query
+}
+
+exports.continueShift = async (req) => {
+    let currentAttendance = await attendanceService.get(req.params.id, req.context)
+    const employee = currentAttendance.employee
+    let nextDate = dates.date(currentAttendance.ofDate).nextBod()
+    let nextAttendance = await attendanceService.getAttendanceByDate(nextDate, employee, {
+        create: true
     }, req.context)
 
-    return { message: 'submitted' }
+    if (req.body.isContinue) {
+        return continueA(currentAttendance, nextAttendance, req.context)
+    } else {
+        return discontinueA(currentAttendance, nextAttendance, req.context)
+    }
+}
+
+const discontinueA = async (currentAttendance, nextAttendance, context) => {
+    var i
+    var timeLog
+    for (i = 0; i < currentAttendance.timeLogs.length; i++) {
+        timeLog = currentAttendance.timeLogs[i]
+        if (timeLog.source === timeLogsService.sourceTypes.system && timeLog.type === timeLogsService.timeLogTypes.checkOut) {
+            await timeLogsService.remove(timeLog, context)
+            currentAttendance.timeLogs.splice(i, 1)
+        }
+    }
+
+    currentAttendance.isContinue = false
+    currentAttendance.checkOutExtend = null
+    await currentAttendance.save()
+
+    for (i = 0; i < nextAttendance.timeLogs.length; i++) {
+        timeLog = nextAttendance.timeLogs[i]
+        if (timeLog.source === timeLogsService.sourceTypes.system && timeLog.type === timeLogsService.timeLogTypes.checkIn) {
+            await timeLogsService.remove(timeLog, context)
+            nextAttendance.timeLogs.splice(i, 1)
+        }
+    }
+
+    await nextAttendance.save()
+
+    await attendanceService.reset(currentAttendance, {}, context)
+    await attendanceService.reset(nextAttendance, {}, context)
+
+    return currentAttendance
+}
+
+const continueA = async (currentAttendance, nextAttendance, context) => {
+    const employee = currentAttendance.employee
+    let nextShiftStartTime = dates.date(nextAttendance.ofDate).setTime(nextAttendance.shift.shiftType.startTime)
+
+    let checkInTimeLog = await timeLogsService.create({
+        time: nextShiftStartTime,
+        type: timeLogsService.timeLogTypes.checkIn,
+        employee: employee,
+        ipAddress: context.ipAddress,
+        source: timeLogsService.sourceTypes.system
+    }, context)
+
+    await attendanceService.addTimeLog(checkInTimeLog, nextAttendance, context)
+    // nextAttendance.timeLogs.push(checkInTimeLog)
+    // await nextAttendance.save()
+
+    let checkOutTimeLog = await timeLogsService.create({
+        time: dates.time(nextShiftStartTime).subtract(1),
+        type: timeLogsService.timeLogTypes.checkOut,
+        employee: employee,
+        ipAddress: context.ipAddress,
+        source: timeLogsService.sourceTypes.system
+    }, context)
+
+    currentAttendance.isContinue = true
+    currentAttendance.checkOutExtend = checkInTimeLog.time
+
+    await currentAttendance.save()
+
+    await attendanceService.addTimeLog(checkOutTimeLog, currentAttendance, context)
+    // currentAttendance.timeLogs.push(checkOutTimeLog)
+    return currentAttendance
 }
 
 exports.getOneDayAttendances = async (req) => {
-    let query = extractQuery(req)
     let page = paging.extract(req)
+    let query = extractQuery(req.query, req.context)
 
-    let attendances = await db.attendance.aggregate([{
-        $lookup: {
-            from: 'shifts',
-            localField: 'shift',
-            foreignField: '_id',
-            as: 'currentShift'
-        }
-    }, {
-        $unwind: '$currentShift'
-    }, {
-        $lookup: {
-            from: 'shifttypes',
-            localField: 'currentShift.shiftType',
-            foreignField: '_id',
-            as: 'shiftType'
-        }
-    }, {
-        $unwind: '$shiftType'
-    }, {
-        $lookup: {
-            from: 'employees',
-            localField: 'employee',
-            foreignField: '_id',
-            as: 'emp'
-        }
-    }, {
-        $unwind: '$emp'
-    }, {
-        $match: query
-    },
-    {
-        $sort: { 'emp.name': 1 }
-        // }, {
-        //     $unwind: {
-        //         path: '$timeLogs',
-        //         preserveNullAndEmptyArrays: true
-        //     }
-        // }, {
-        //     $lookup: {
-        //         from: 'timelogs',
-        //         localField: 'timeLogs',
-        //         foreignField: '_id',
-        //         as: 'timeLogItem'
-        //     }
-        // }, {
-        //     $unwind: {
-        //         path: '$timeLogItem',
-        //         preserveNullAndEmptyArrays: true
-        //     }
-        // }, {
-        //     $group: {
-        //         _id: '$_id',
-        //         status: { $first: '$status' },
-        //         ofDate: { $first: '$ofDate' },
-        //         checkIn: { $first: '$checkIn' },
-        //         checkOut: { $first: '$checkOut' },
-        //         checkOutExtend: { $first: '$checkOutExtend' },
-        //         hoursWorked: { $first: '$hoursWorked' },
-        //         minsWorked: { $first: '$minsWorked' },
-        //         units: { $first: '$units' },
-        //         isGrace: { $first: '$isGrace' },
-        //         employee: { $first: '$emp' },
-        //         team: { $first: '$team' },
-        //         shift: { $first: '$currentShift' },
-        //         timeLogs: { $push: '$timeLogItem' }
-        //     }
-    },
-    { $skip: page.skip },
-    { $limit: page.limit }
-    ])
+    let entities = await attendanceService.getOneDayAttendances(page, query, req.context)
 
-    let items = attendances.map(entity => {
-        var model = {
-            id: entity._id,
-            status: entity.status,
-            checkIn: entity.checkIn,
-            checkOut: entity.checkOut,
-            checkOutExtend: entity.checkOutExtend,
-            ofDate: entity.ofDate,
-            count: entity.count,
-            hoursWorked: entity.hoursWorked || 0,
-            minsWorked: entity.minsWorked || 0,
-            shift: {
-                id: entity.currentShift._id,
-                date: entity.currentShift.date,
-                status: entity.currentShift.status,
-                shiftType: {
-                    id: entity.shiftType._id,
-                    name: entity.shiftType.name,
-                    code: entity.shiftType.code,
-                    startTime: entity.shiftType.startTime,
-                    endTime: entity.shiftType.endTime
-                }
-            },
-            employee: {
-                id: entity.emp._id,
-                name: entity.emp.name,
-                code: entity.emp.code,
-                designation: entity.emp.designation,
-                picData: entity.emp.picData,
-                picUrl: entity.emp.picUrl,
-                email: entity.emp.email,
-                hasTeam: entity.team && entity.team.teamCount > 0
-            },
-            timeLogs: []
-        }
-
-        return model
+    entities.forEach(item => {
+        item.passes = timeLogsService.getPasses(item, req.context)
     })
 
-    let total = await db.employee.find(query).count()
-
-    return {
-        items: items,
-        pageSize: page.limit,
-        pageNo: page.pageNo,
-        total: total
-    }
-}
-
-exports.getSingleDayAttendancesExcel = (req, res) => {
-    let query = {
-        organization: req.context.organization,
-        status: 'active'
+    let result = {
+        items: mapper.toSearchModel(entities)
     }
 
-    let shiftEnd = req.query.byShiftEnd === 'true'
+    let total = 0
 
-    let shiftLength = req.query.byShiftLength === 'true'
-
-    let ofDate = req.query.ofDate || moment()
-
-    let fromDate = ofDate ? moment(ofDate).startOf('day') : moment().startOf('day')
-
-    let getExtraHours = {
-        byShiftEnd: shiftEnd,
-        byShiftLength: shiftLength
-    }
-
-    // getExtraHours = req.query.extraHours || true,
-
-    let toDate = ofDate ? moment(ofDate).endOf('day') : moment().endOf('day')
-
-    let fileName = ofDate
-        ? 'DayAttendance-' + moment(ofDate).format('MMMM Do') + '.xlsx'
-        : 'DayAttendance-' + moment().format('MMMM Do') + '.xlsx'
-
-    let organizationName = req.context.organization.name
-
-    if (req.query.name) {
-        query.name = {
-            $regex: req.query.name,
-            $options: 'i'
-        }
-    }
-
-    if (req.query.code) {
-        query.code = {
-            $regex: req.query.code,
-            $options: 'i'
-        }
-    }
-
-    if (req.query.tagIds) {
-        let tagIds = []
-        let queryTags = req.query.tagIds.split(',')
-        _.each(queryTags, (tagId) => {
-            tagIds.push(global.toObjectId(tagId))
-        })
-        query['emp.tags'] = { $in: tagIds }
-    }
-
-    if (req.query.shiftTypeId) {
-        query.shiftType = global.toObjectId(req.query.shiftTypeId)
-    }
-
-    db.employee.find(query)
-        .sort({ name: 1 })
-        .then(employees => {
-            return Promise.mapSeries(employees, emp => {
-                return db.attendance.findOne({
-                    employee: emp,
-                    ofDate: {
-                        $gte: fromDate,
-                        $lt: toDate
-                    }
-                }).populate({
-                    path: 'shift',
-                    populate: {
-                        path: 'shiftType'
-                    }
-                })
-                    .then(attendance => {
-                        emp.attendance = attendance
-                        return emp
-                    })
-            }).then(employees => {
-                var thatDayEmployees = []
-                _.each(employees, item => {
-                    thatDayEmployees.push(item)
-                    var rejectedEmp
-                    if (item.attendance === null) {
-                        rejectedEmp = item
-                        thatDayEmployees.splice(thatDayEmployees.indexOf(rejectedEmp), 1)
-                    }
-                })
-                return thatDayEmployees
-            })
-                .catch(err => {
-                    throw err
-                })
-        })
-        .then(employees => {
-            return xlBuilderSingleDay(fileName, ofDate, getExtraHours, employees, organizationName)
-        })
-        .then(result => {
-            if (result.isCreated) {
-                return res.download(join(appRootPath.path, `temp/${fileName}`), fileName, function (err) {
-                    if (err) {
-                        throw err
-                    }
-                    fs.unlink(join(appRootPath.path, `temp/${fileName}`), function (err) {
-                        if (err) {
-                            throw err
-                        }
-                    })
-                })
+    if (page) {
+        total = await db.attendance.aggregate([{
+            $lookup: {
+                from: 'shifts',
+                localField: 'shift',
+                foreignField: '_id',
+                as: 'currentShift'
             }
-            throw result
-        })
-        .catch(err => {
-            res.failure(err)
-        })
-}
-
-exports.singleEmployeeMonthlyReport = (req, res) => {
-    let query = {
-        organization: global.toObjectId(req.context.organization.id),
-        _id: global.toObjectId(req.query.employee)
-    }
-
-    let shiftEnd = req.query.byShiftEnd === 'true'
-
-    let shiftLength = req.query.byShiftLength === 'true'
-
-    let fileName
-
-    let empInfo
-
-    let attendances = []
-
-    let ofDate = req.query.ofDate
-
-    let fromDate = ofDate ? moment(ofDate).startOf('month') : moment().startOf('month')
-
-    let toDate = ofDate ? moment(ofDate).endOf('month') : moment().endOf('month')
-
-    let getExtraHours = {
-        byShiftEnd: shiftEnd,
-        byShiftLength: shiftLength
-    }
-
-    let orgDetails = {
-        orgName: req.context.organization.name,
-        downloaderName: req.employee.name,
-        downloaderEmail: req.employee.email,
-        downloaderPhone: req.employee.phone
-    }
-    // getExtraHours = req.query.extraHours || true;
-    db.employee.aggregate([{
-        $match: query
-    }, {
-        $project: {
-            name: 1,
-            code: 1,
-            designation: 1
-        }
-    }]).then(employees => {
-        let employee = employees[0]
-        empInfo = employee.name || employee.code
-
-        return Promise.all([
-            db.leave.find({
-                employee: global.toObjectId(employee._id),
-                status: 'approved',
-                date: {
-                    $gte: fromDate,
-                    $lt: moment()
-                }
-            }).populate('leaveType'),
-            db.monthSummary.findOne({
-                employee: employee,
-                weekStart: fromDate,
-                weekEnd: toDate
-            }).populate({
-                path: 'attendances',
-                populate: {
-                    path: 'shift',
-                    populate: {
-                        path: 'shiftType'
-                    }
-                }
-            })
-        ])
-            .spread((leaves, monthLog) => {
-                return attendances.push({
-                    employee: employee,
-                    leaves: leaves,
-                    monthLog: monthLog
-                })
-            }).catch(err => {
-                throw err
-            })
-    }).then(() => {
-        fileName = ofDate
-                ? `${empInfo}-` + moment(ofDate).startOf('month').format('MMMM Do') + '.xlsx'
-                : `${empInfo}-` + moment().startOf('month').format('MMMM Do') + '.xlsx'
-
-        return xlBuilder(fileName, ofDate, getExtraHours, attendances, orgDetails)
-    })
-        .then(result => {
-            if (result.isCreated) {
-                return res.download(join(appRootPath.path, `temp/${fileName}`), fileName, function (err) {
-                    if (err) {
-                        throw err
-                    }
-                    fs.unlink(join(appRootPath.path, `temp/${fileName}`), function (err) {
-                        if (err) {
-                            throw err
-                        }
-                    })
-                })
+        }, {
+            $unwind: '$currentShift'
+        }, {
+            $lookup: {
+                from: 'shifttypes',
+                localField: 'currentShift.shiftType',
+                foreignField: '_id',
+                as: 'shiftType'
             }
-            throw result
-        }).catch(err => {
-            res.failure(err)
-        })
+        }, {
+            $unwind: '$shiftType'
+        }, {
+            $lookup: {
+                from: 'employees',
+                localField: 'employee',
+                foreignField: '_id',
+                as: 'emp'
+            }
+        }, {
+            $unwind: '$emp'
+        }, {
+            $match: query
+        }, {
+            $count: 'data'
+        }])
+    }
+
+    if (page) {
+        result.pageSize = page.limit
+        result.pageNo = page.pageNo
+        result.total = total && total.length ? total[0].data : 0
+    }
+
+    return result
 }
 
 // create past dummy attendance
@@ -1591,7 +1700,10 @@ exports.markAbsentAttendance = (req, res) => {
                         date: shiftDate
                     }
 
-                    return dbQuery.getHoliday({ date: absentFrom, organization: orgId }).then(holiday => {
+                    return dbQuery.getHoliday({
+                        date: absentFrom,
+                        organization: orgId
+                    }).then(holiday => {
                         if (holiday) {
                             shiftModel.status = 'holiday'
                             shiftModel.holiday = holiday
@@ -1600,7 +1712,9 @@ exports.markAbsentAttendance = (req, res) => {
                         return db.shift.findOrCreate({
                             shiftType: employee.shiftType,
                             date: shiftDate
-                        }, shiftModel, { upsert: true })
+                        }, shiftModel, {
+                            upsert: true
+                        })
                     }).then(shift => {
                         let fromDate = absentFrom
 
@@ -1702,7 +1816,9 @@ exports.getAttendanceLogs = (req, res) => {
                 }
                 db.timeLog.find(logsQuery)
                     .populate('device')
-                    .sort({ time: 1 })
+                    .sort({
+                        time: 1
+                    })
                     .then(timeLogs => {
                         attendance.timeLogs = timeLogs
                         next()
@@ -1759,7 +1875,9 @@ exports.trackLocation = (req, res) => {
                 .then((locationLog) => {
                     if (!locationLog.message) {
                         req.context.processSync = true
-                        offline.queue('locationLog', 'create', { id: locationLog.id }, req.context)
+                        offline.queue('locationLog', 'create', {
+                            id: locationLog.id
+                        }, req.context)
                             .then(() => locationLog)
                     }
 
@@ -1785,7 +1903,9 @@ exports.getLocationLogs = async (req, res) => {
         }
 
         let locationLogs = await db.locationLog.find(model)
-            .sort({ time: -1 })
+            .sort({
+                time: -1
+            })
 
         let from = attendance.checkIn
         let till = attendance.checkOut
@@ -1853,7 +1973,9 @@ exports.LocationLogsByDate = (req, res) => {
         }
     }
     db.locationLog.find(model)
-        .sort({ time: -1 })
+        .sort({
+            time: -1
+        })
         .then((locationLogs) => {
             return res.page(locationMapper.toSearchModel(locationLogs))
         }).catch(err => res.failure(err))
@@ -1883,7 +2005,9 @@ exports.upadteTeamInAttendance = (req, res) => {
                         $gte: req.query.fromDate,
                         $lt: req.query.toDate
                     }
-                }).sort({ ofDate: 1 })
+                }).sort({
+                    ofDate: 1
+                })
             ])
                 .spread((supervisors, attendances) => {
                     logger.info(`employee have ${supervisors.length} superviors`)
@@ -1936,7 +2060,9 @@ exports.deleteTeamInAttendance = (req, res) => {
                     $gte: req.query.fromDate,
                     $lt: req.query.toDate
                 }
-            }).sort({ ofDate: 1 }).then((attendances) => {
+            }).sort({
+                ofDate: 1
+            }).then((attendances) => {
                 return Promise.each(attendances, attendance => {
                     if (attendance.team.teamCount) {
                         attendance.team = {}
@@ -1969,12 +2095,22 @@ exports.updateHoursWorked = (req, res) => {
                         $lt: moment() // for perticular punchDate
                             .set('hour', 0).set('minute', 0).set('second', 0).set('millisecond', 0)._d
                     },
-                    checkIn: { $exists: true },
-                    checkOut: { $exists: true },
-                    status: 'missSwipe'
+                    checkIn: {
+                        $exists: true
+                    },
+                    checkOut: {
+                        $exists: true
+                    }
+                    // ,
+                    // status: 'missSwipe'
                 })
                     .populate('employee')
-                    .populate({ path: 'shift', populate: { path: 'shiftType' } })
+                    .populate({
+                        path: 'shift',
+                        populate: {
+                            path: 'shiftType'
+                        }
+                    })
                     .then((attendances) => {
                         return Promise.each(attendances, attendance => {
                             var status
@@ -2021,7 +2157,11 @@ exports.extendShift = (req, res) => {
         }
     }
 
-    return db.attendance.findByIdAndUpdate({ _id: req.params.id }, updateQuery, { new: true })
+    return db.attendance.findByIdAndUpdate({
+        _id: req.params.id
+    }, updateQuery, {
+        new: true
+    })
         .then((attendance) => {
             if (!attendance) {
                 return res.failure('no attendance found')
@@ -2031,4 +2171,25 @@ exports.extendShift = (req, res) => {
         .catch(err => {
             return res.failure(err)
         })
+}
+
+exports.clearAction = async (req) => {
+    let log = req.context.logger.start('api/attendances:clearAction')
+    let attendance = await attendanceService.clearNeedAction(req.params.id, req.context)
+    log.end()
+    return mapper.toModel(attendance)
+}
+exports.bulk = async (req) => {
+    return timeLogsApi.bulk(req)
+}
+exports.extractQuery = extractQuery
+
+const getIpAddress = (req) => {
+    if (req.headers['x-forwarded-for']) {
+        return req.headers['x-forwarded-for'].split(',')[0]
+    } else if (req.connection && req.connection.remoteAddress) {
+        return req.connection.remoteAddress
+    } else {
+        return req.ip
+    }
 }

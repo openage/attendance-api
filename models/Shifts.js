@@ -13,8 +13,10 @@ var shift = new mongoose.Schema({
     }, //    may set as holiday but admin can change to  -- working
 
     shiftType: { type: mongoose.Schema.Types.ObjectId, ref: 'shiftType' },
+    holiday: { type: mongoose.Schema.Types.ObjectId, ref: 'holiday' },
+
     created_At: { type: Date, default: Date.now },
-    holiday: { type: mongoose.Schema.Types.ObjectId, ref: 'holiday' }
+    timeStamp: { type: Date, default: Date.now }
 })
 
 shift.pre('save', function (next) {

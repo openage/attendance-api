@@ -51,5 +51,88 @@
         "drive": {
             "url": "http://localhost:3003/api"
         }
+    },
+    "organization": {
+        "timeZone": "IST",
+        "jobs": {
+            "shift": {
+                "start": false,
+                "end": false
+            },
+            "day": {
+                "start": true
+            },
+            "month": {
+                "start": true
+            },
+            "year": {
+                "start": true
+            }
+        },
+        "timeLog": {
+            "ignore": {
+                "threshold": 120 // 2 minutes
+            },
+            "add": {
+                "adjust": false
+            }
+        },
+        "shift": {
+            "span": {
+                "ignoreBreak": false,
+                "extra": 480 // 8 hours
+            }
+        },
+        "attendance": {
+            "checkIn": {
+                "earliest": 180 // minutes early
+            },
+            "checkOut": {
+                "latest": 180 // minutes late
+            },
+            "overtime": "clocked", // work-span
+            "present": {
+                "codes": "P|CO",
+                "display": "P"
+            },
+            "leave": {
+                "codes": "L|EL|ML|LWS|LT",
+                "display": "L"
+            },
+            "off": {
+                "codes": "H|WO",
+                "display": "WO"
+            },
+            "absent": {
+                "codes": "A",
+                "display": "A"
+            }
+        },
+        "leave": {
+            "grant": {
+                "over-time": {
+                    "multiple": true
+                },
+                "work-day": {
+                    "multiple": true,
+                    "states": [
+                        "present",
+                        "weekOff",
+                        "holiday",
+                        "checked-in-again",
+                        "checkedIn"
+                    ]
+                }
+            }
+        },
+        "reports": {
+            "form-25": {
+                "skip": {
+                    "leave-columns": [
+                        "CO"
+                    ]
+                }
+            }
+        }
     }
 }

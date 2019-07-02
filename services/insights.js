@@ -1,120 +1,47 @@
 'use strict'
-
-const logger = require('@open-age/logger')('services/insights')
-const moment = require('moment')
-const team = require('./teams')
-const file = require('../generators/file')
-const json2csv = require('../generators/json2csv')
-const appRoot = require('app-root-path')
-const webConfig = require('config').get('webServer')
 const db = require('../models')
 
-const updateStatistics = (dailyInsight, param) => {
-    logger.start('updateStatistics')
-
-    dailyInsight.statistics.params.forEach((paramObject) => {
-        if (paramObject.key === param.toLowerCase()) {
-            paramObject.count++
-        }
-    })
-
-    dailyInsight.statistics.count++
-
-    return dailyInsight.save()
-}
-
-const findOrCreate = async (alert, employeeId, date) => {
-    logger.start('findOrCreate')
-    const paramsModel = []
-
-    if (alert.config && alert.config.trigger) {
-        for (var key in alert.config.trigger) {
-            let param = {}
-            if (alert.config.trigger.hasOwnProperty(key)) {
-                param.key = key
-                param.value = alert.config.trigger[key]
-                param.count = 0
-                paramsModel.push(param)
-            }
-        }
+const set = (model, entity, context) => {
+    if (model.title) {
+        entity.title = model.title
     }
 
-    const alertStats = {
-        count: 0,
-        params: paramsModel
+    if (model.config.trigger) {
+        entity.config.trigger = model.config.trigger
     }
 
-    const createModel = {
-        alert: alert.id,
-        employee: employeeId,
-        date: moment(date).startOf('day'),
-        statistics: alertStats
+    if (model.config.processor) {
+        entity.config.processor = model.config.processor
     }
 
-    return db.dailyInsight.findOrCreate({
-        alert: alert.id,
-        employee: employeeId,
-        date: moment(date).startOf('day')
-    }, createModel)
-        .then((dailyInsight) => {
-            return dailyInsight.result
-        })
-        .catch((err) => {
-            return err
-        })
+    if (model.type) {
+        entity.type = model.type
+    }
+
+    if (model.status) {
+        entity.status = model.status
+    }
 }
 
-const seniorSupervisorStats = async (alert, seniorSupervisor, param) => {
-    logger.start('seniorSupervisorStats')
-
-    const dailyInsight = await findOrCreate(alert, seniorSupervisor)
-
-    return updateStatistics(dailyInsight, param)
+exports.create = async (model, context) => {
+    context.logger.start('services:create')
+    return new db.insight(model).save()
 }
 
-const supervisorStats = async (alert, supervisor, param) => {
-    logger.start('supervisorInsight')
-
-    const dailyInsight = await findOrCreate(alert, supervisor)
-
-    const updatedStatistics = await updateStatistics(dailyInsight, param)
-
-    const seniorSupervisors = await team.getSupervisors(supervisor)
-
-    await Promise.all(seniorSupervisors.map(async (seniorSupervisor) => {
-        await seniorSupervisorStats(alert, seniorSupervisor, param)
-    }))
-
-    return dailyInsight
+exports.search = async (query, context) => {
+    context.logger.start('search')
+    query.organization = context.organization.id
+    return db.insight.find(query).populate('employee type')
 }
 
-const createReport = async (report, csvHeaders, team) => {
-    logger.start('createReport')
-
-    return json2csv.generate(csvHeaders, team)
-        .then(async (csv) => {
-            let fileName = `${report.params.type}-${report.startedAt}.csv`
-            let filePath = `${appRoot}/temp/${fileName}`
-            return file.generate(filePath, file)
-                .then(async () => {
-                    report.completedAt = new Date()
-                    report.status = 'ready'
-                    report.filePath = filePath
-                    report.fileUrl = `${webConfig.url}/api/reports/${fileName}`
-                    return report.save()
-                })
-                .catch((err) => {
-                    throw err
-                })
-        })
-        .catch(async (err) => {
-            report.completedAt = new Date()
-            report.error = err.toString()
-            report.status = 'errored'
-            return report.save()
-        })
+exports.get = async (id, context) => {
+    context.logger.start('get')
+    return db.insight.findById(id)
 }
 
-exports.supervisorStats = supervisorStats
-exports.findOrCreate = findOrCreate
-exports.createReport = createReport
+exports.update = async (id, model, context) => {
+    context.logger.start('update')
+    let entity = await db.insight.findById(id)
+    set(model, entity, context)
+    return entity.save()
+}

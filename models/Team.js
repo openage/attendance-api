@@ -5,7 +5,10 @@ const findOneOrCreate = require('mongoose-find-one-or-create')
 
 var team = new mongoose.Schema({
     supervisor: { type: mongoose.Schema.Types.ObjectId, ref: 'employee' }, // SupervisorId
-    employee: { type: mongoose.Schema.Types.ObjectId, ref: 'employee' }
+    employee: { type: mongoose.Schema.Types.ObjectId, ref: 'employee' },
+
+    created_At: { type: Date, default: Date.now },
+    timeStamp: { type: Date, default: Date.now }
 })
 
 team.pre('save', function (next) {

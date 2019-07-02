@@ -67,7 +67,8 @@ exports.get = (req, res) => {
                     devices: {},
                     api: {
                         '@url': serverConfig.url || '',
-                        '@token': data.employee.token || '',
+                        '@token': data.employee.role.key || '',
+                        '@roleKey': data.employee.role.key || '',
                         '@orgCode': data.organization.code || ''
                     },
                     service: {

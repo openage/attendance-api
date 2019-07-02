@@ -1,5 +1,7 @@
 'use strict'
 global.Promise = require('bluebird')
+process.env.APP = 'api'
+
 const express = require('express')
 const logger = require('@open-age/logger')('bin/api').start('booting')
 const webServerConfig = require('config').get('webServer')

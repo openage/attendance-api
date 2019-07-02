@@ -23,7 +23,7 @@ const isLate = (attendance, limit) => {
     return shiftCheckIn.diff(shiftStartTime, 'minutes') > limit
 }
 
-exports.process = async (data, alert, context) => {
+exports.process = async (attendance, alert, context) => {
     logger.start('process')
     let consecutive = true
     let threshold = 5
@@ -46,87 +46,85 @@ exports.process = async (data, alert, context) => {
         }
     }
 
-    return db.attendance.findById(data.id).populate('employee').then(attendance => {
-        let startOfMonth = moment().startOf('month')
+    let startOfMonth = moment().startOf('month')
 
-        return db.attendance.find({
-            employee: attendance.employee.id,
-            checkIn: {
-                $exists: true,
-                $gte: startOfMonth.toDate()
-            }
-        }).populate({
-            path: 'shift',
-            populate: {
-                path: 'shiftType'
-            }
-        }).then(async (attendances) => {
-            if (!attendances || !attendances.length) {
-                return null
-            }
-
-            // today Late
-
-            let todayAttendance = attendances.find(item => {
-                return moment(attendance.checkIn).isSame(moment(item.checkIn), 'day')
-            })
-
-            // if not same day
-            if (!moment(attendance.checkIn).isSame(moment(), 'day')) { return null }
-
-            let startTime = moment(todayAttendance.shift.shiftType.startTime)
-            let shiftStartTime = moment(todayAttendance.shift.date)
-                .set('hour', startTime.hour())
-                .set('minute', startTime.minute())
-                .set('second', startTime.second())
-                .set('millisecond', 0)
-            attendance.shift = todayAttendance.shift
-            if (isLate(attendance, lateByMinutes)) {
-                await insights.supervisorStats(alert, attendance.employee.id, 'noOfMin')
-                communications.send({
-                    employee: attendance.employee,
-                    level: supervisorLevel
-                }, {
-                    actions: [],
-                    entity: entities.toEntity(attendance, 'attendance'),
-                    data: {
-                        checkIn: attendance.checkIn,
-                        name: attendance.employee.name || attendance.employee.code,
-                        minutes: moment(attendance.checkIn).diff(shiftStartTime, 'minutes')
-                    },
-                    template: 'consecutively-comming-late'
-                }, channels, context)
-            }
-
-            // regularly-comming-late
-
-            let lateAttendances = attendances.filter(item => {
-                return isLate(item, lateByMinutes)
-            }).sort((a, b) => {
-                return a.shift.date - b.shift.date
-            })
-
-            if (lateAttendances.length < threshold) { return null }
-            if (!consecutive) { return null }
-
-            inLastDays = moment().diff(startOfMonth, 'days')
-
-            await insights.supervisorStats(alert, attendance.employee, 'inARow')
-            return communications.send({
-                employee: attendance.employee,
-                level: supervisorLevel
-            }, {
-                actions: [],
-                entity: entities.toEntity(attendance, 'attendance'),
-                data: {
-                    checkIn: attendance.checkIn,
-                    count: lateAttendances.length,
-                    minutes: lateByMinutes,
-                    days: inLastDays,
-                    name: attendance.employee.name || attendance.employee.code
-                },
-                template: 'regularly-comming-late'
-            }, channels, context)
-        })
+    let attendances = await db.attendance.find({
+        employee: attendance.employee.id,
+        checkIn: {
+            $exists: true,
+            $gte: startOfMonth.toDate()
+        }
+    }).populate({
+        path: 'shift',
+        populate: {
+            path: 'shiftType'
+        }
     })
+
+    if (!attendances || !attendances.length) {
+        return null
+    }
+
+    // today Late
+
+    let todayAttendance = attendances.find(item => {
+        return moment(attendance.checkIn).isSame(moment(item.checkIn), 'day')
+    })
+
+    // if not same day
+    if (!moment(attendance.checkIn).isSame(moment(), 'day')) { return }
+
+    let startTime = moment(todayAttendance.shift.shiftType.startTime)
+    let shiftStartTime = moment(todayAttendance.shift.date)
+        .set('hour', startTime.hour())
+        .set('minute', startTime.minute())
+        .set('second', startTime.second())
+        .set('millisecond', 0)
+    attendance.shift = todayAttendance.shift
+    if (isLate(attendance, lateByMinutes)) {
+        await insights.supervisorStats(alert, attendance.employee.id, 'noOfMin')
+        await communications.send({
+            employee: attendance.employee,
+            level: supervisorLevel
+        }, {
+            actions: [],
+            entity: entities.toEntity(attendance, 'attendance'),
+            data: {
+                checkIn: attendance.checkIn,
+                name: attendance.employee.name || attendance.employee.code,
+                minutes: moment(attendance.checkIn).diff(shiftStartTime, 'minutes')
+            },
+            template: 'consecutively-comming-late'
+        }, channels, context)
+    }
+
+    // regularly-comming-late
+
+    let lateAttendances = attendances.filter(item => {
+        return isLate(item, lateByMinutes)
+    }).sort((a, b) => {
+        return a.shift.date - b.shift.date
+    })
+
+    if (lateAttendances.length < threshold) { return }
+    if (!consecutive) { return }
+
+    inLastDays = moment().diff(startOfMonth, 'days')
+
+    await insights.supervisorStats(alert, attendance.employee, 'inARow')
+    await communications.send({
+        employee: attendance.employee,
+        level: supervisorLevel
+    }, {
+        actions: [],
+        entity: entities.toEntity(attendance, 'attendance'),
+        data: {
+            checkIn: attendance.checkIn,
+            count: lateAttendances.length,
+            minutes: lateByMinutes,
+            days: inLastDays,
+            name: attendance.employee.name || attendance.employee.code
+        },
+        template: 'regularly-comming-late'
+    }, channels, context)
 }

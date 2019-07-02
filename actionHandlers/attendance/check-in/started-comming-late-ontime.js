@@ -1,6 +1,5 @@
 'use strict'
 let communications = require('../../../services/communications')
-var _ = require('underscore')
 var moment = require('moment')
 var entities = require('../../../helpers/entities')
 var math = require('mathjs')
@@ -11,7 +10,7 @@ let getDataForSTD = (items) => {
     let lateData = []
 
     let onTimeData = []
-    _.each(items, (item) => {
+    items.forEach(item => {
         let startTime = moment(item.shift.shiftType.startTime)
 
         let shiftStartTime = moment(item.shift.date)
@@ -30,7 +29,7 @@ let getDataForSTD = (items) => {
     })
 }
 
-exports.process = (data, alert, context) => {
+exports.process = async (attendance, alert, context) => {
     let supervisorLevel = 1
     let channels = ['push']
     let triggerOn = 'endOfMonth'
@@ -63,45 +62,40 @@ exports.process = (data, alert, context) => {
         }
     }
 
-    return db.attendance.findById(data.id).populate('employee').then(attendance => {
-        let lastMonthDeviation
+    let lastMonthDeviation
 
-        let getMonthSummary = (date) => {
-            return db.monthSummary.findOne({
-                weekStart: {
-                    $gte: date.startOf('month').toDate()
-                },
-                weekEnd: {
-                    $lte: date.endOf('month').toDate()
-                },
-                employee: attendance.employee.id
-            })
-        }
-
-        getMonthSummary(moment().startOf('month').subtract(1, 'month')).then(summmary => {
-            lastMonthDeviation = summmary.standardDeviation || 0
-            return getMonthSummary(moment().startOf('month'))
-        }).then(summmary => {
-            let currentMonthDeviation = summmary.standardDeviation || 0
-
-            let diff = currentMonthDeviation - lastMonthDeviation
-
-            if ((math.sign(diff) === -1 && diff < -minutes) || (math.sign(diff) === 1 && diff > minutes)) {
-                return communications.send({
-                    employee: attendance.employee,
-                    level: supervisorLevel
-                }, {
-                    actions: [],
-                    entity: entities.toEntity(attendance, 'attendance'),
-                    data: {
-                        status: (signOfDiff === 1 && diff > minutes) ? 'late' : 'on time',
-                        name: attendance.employee.name || attendance.employee.code
-                    },
-                    template: 'started-comming-late-ontime'
-                }, channels, context)
-            }
-        }).catch(err => {
-            return Promise.cast(null)
+    let getMonthSummary = (date) => {
+        return db.monthSummary.findOne({
+            weekStart: {
+                $gte: date.startOf('month').toDate()
+            },
+            weekEnd: {
+                $lte: date.endOf('month').toDate()
+            },
+            employee: attendance.employee.id
         })
-    })
+    }
+
+    let summmary = getMonthSummary(moment().startOf('month').subtract(1, 'month'))
+    lastMonthDeviation = summmary.standardDeviation || 0
+    summmary = getMonthSummary(moment().startOf('month'))
+
+    let currentMonthDeviation = summmary.standardDeviation || 0
+
+    let diff = currentMonthDeviation - lastMonthDeviation
+
+    if ((math.sign(diff) === -1 && diff < -minutes) || (math.sign(diff) === 1 && diff > minutes)) {
+        return communications.send({
+            employee: attendance.employee,
+            level: supervisorLevel
+        }, {
+            actions: [],
+            entity: entities.toEntity(attendance, 'attendance'),
+            data: {
+                status: (alert.config.signOfDiff === 1 && diff > minutes) ? 'late' : 'on time',
+                name: attendance.employee.name || attendance.employee.code
+            },
+            template: 'started-comming-late-ontime'
+        }, channels, context)
+    }
 }

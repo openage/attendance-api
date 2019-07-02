@@ -16,7 +16,28 @@ var leaveBalance = new mongoose.Schema({
     units: Number,
     unitsAvailed: Number,
     employee: { type: mongoose.Schema.Types.ObjectId, ref: 'employee' },
-    leaveType: { type: mongoose.Schema.Types.ObjectId, ref: 'leaveType' }
+    leaveType: { type: mongoose.Schema.Types.ObjectId, ref: 'leaveType' },
+
+    journals: [{
+        date: Date,
+        units: Number,
+        entity: {
+            id: String,
+            type: { type: String }
+        },
+        meta: Object,
+        comment: String,
+        by: { type: mongoose.Schema.Types.ObjectId, ref: 'employee' }
+    }],
+
+    status: {
+        type: String,
+        enum: ['active', 'inactive'],
+        default: 'active'
+    },
+
+    created_At: { type: Date, default: Date.now },
+    timeStamp: { type: Date, default: Date.now }
 })
 
 leaveBalance.pre('save', function (next) {

@@ -65,15 +65,15 @@ const supervisorUpdate = async (attendance, supervisor, shift, teamMembers, cont
         supervisorAttendance.team.absentCount = absentCount
     }
 
-    if (attendance.status === 'missSwipe' && attendance.updatePreviousAttendance) {
-        supervisorAttendance.team.presentCount = ++presentCount
-        supervisorAttendance.team.absentCount = --absentCount
-        if (attendance.checkIn) {
-            if (isLate) {
-                supervisorAttendance.team.lateCount = ++lateCount
-            }
-        }
-    }
+    // if (attendance.status === 'missSwipe' && attendance.updatePreviousAttendance) {
+    //     supervisorAttendance.team.presentCount = ++presentCount
+    //     supervisorAttendance.team.absentCount = --absentCount
+    //     if (attendance.checkIn) {
+    //         if (isLate) {
+    //             supervisorAttendance.team.lateCount = ++lateCount
+    //         }
+    //     }
+    // }
 
     if (attendance.status === 'present' || (attendance.status === 'halfday' && attendance.minsWorked)) {
         if (attendance.updatePreviousAttendance) {
@@ -119,9 +119,9 @@ const supervisorUpdate = async (attendance, supervisor, shift, teamMembers, cont
     return updateSupervisor(supervisorAttendance)
 }
 
-const addNewTeam = (supervisors, members) => {
+const addNewTeam = async (supervisors, members) => {
     if (members.length <= 0 || supervisors.length <= 0) {
-        return Promise.resolve(null)
+        return null
     }
     return Promise.each(supervisors, supervisor => {
         return Promise.each(members, member => {
@@ -310,7 +310,8 @@ const setSupervisor = async (employee, supervisor, context) => {
     log.info(`${employee.name} have ${obsoleteBosses.length} number of new obsolete bosses`)
     log.info(`${employee.name} have ${members.length} number of new members in team list`)
 
-    return Promise.all([addNewTeam(newBosses, members), removeOldTeam(obsoleteBosses, members)])
+    await addNewTeam(newBosses, members)
+    await removeOldTeam(obsoleteBosses, members)
 }
 
 const updateTeamSummary = async (data, context) => {

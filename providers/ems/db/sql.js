@@ -98,10 +98,10 @@ exports.pagingBuilder = function (input, defaults) {
 
     builder.offset = (builder.no - 1) * builder.size
     /**
-         * converts the count to no of pages
-         * @param {Number} count
-         * @returns {Number} - number of pages
-         */
+     * converts the count to no of pages
+     * @param {Number} count
+     * @returns {Number} - number of pages
+     */
     builder.totalPages = function (count) {
         if (builder.noPaging) {
             return 1
@@ -151,10 +151,32 @@ exports.whereBuilder = function () {
             return builder
         }
 
+        if (!Array.isArray(value)) {
+            builder.filters.push({
+                field: field,
+                value: value,
+                op: operater || '='
+            })
+            return builder
+        }
+
+        if (!value.length) {
+            return builder
+        }
+        let collection = '('
+
+        value.forEach(item => {
+            collection = `${collection} '${item}',`
+        })
+
+        collection = collection.substring(0, collection.length - 1)
+
+        collection = `${collection})`
+
         builder.filters.push({
             field: field,
-            value: value,
-            op: operater || '='
+            value: collection,
+            op: operater || 'in'
         })
 
         return builder

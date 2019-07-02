@@ -6,7 +6,8 @@ let findOneOrCreate = require('mongoose-find-one-or-create')
 var employee = new mongoose.Schema({
     name: String,
     code: String,
-    displayCode: String,
+    fatherName: String,
+    biometricCode: String,
     phone: String,
     email: String,
     status: String,
@@ -18,9 +19,14 @@ var employee = new mongoose.Schema({
         type: String,
         default: null
     },
-    EmpDb_Emp_id: Number,
+    EmpDb_Emp_id: String,
     Ext_token: String,
     token: String,
+    role: {
+        id: { type: String },
+        key: { type: String },
+        permissions: [{ type: String }]
+    },
     dob: Date,
     gender: String,
     guid: String,
@@ -98,6 +104,8 @@ var employee = new mongoose.Schema({
         ref: 'tag'
     }],
 
+    config: Object,
+
     contractor: {
         type: String,
         default: ''
@@ -108,6 +116,10 @@ var employee = new mongoose.Schema({
         default: ''
     },
     department: {
+        type: String,
+        default: ''
+    },
+    division: {
         type: String,
         default: ''
     },
@@ -152,12 +164,16 @@ var employee = new mongoose.Schema({
             type: mongoose.Schema.Types.ObjectId,
             ref: 'device'
         },
+        code: String,
         status: {
             type: String,
             enum: ['enable', 'disable'],
             default: 'enable'
         }
-    }]
+    }],
+
+    created_At: { type: Date, default: Date.now },
+    timeStamp: { type: Date, default: Date.now }
 
 })
 
@@ -165,6 +181,7 @@ employee.pre('save', function (next) {
     this.timeStamp = Date.now()
     next()
 })
+
 employee.plugin(findOrCreate)
 employee.plugin(findOneOrCreate)
 mongoose.model('employee', employee)

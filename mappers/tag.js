@@ -3,7 +3,7 @@
 exports.toModel = entity => {
     var model = {
         id: entity.id,
-        name: entity.name
+        name: entity.name.toLowerCase()
     }
     if (entity.tagType) {
         model.tagType = {}

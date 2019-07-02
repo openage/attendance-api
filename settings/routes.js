@@ -1,5 +1,5 @@
 'use strict'
-const auth = require('../middleware/authorization')
+const auth = require('../helpers/auth')
 const apiRoutes = require('@open-age/express-api')
 const fs = require('fs')
 const loggerConfig = require('config').get('logger')
@@ -11,15 +11,6 @@ module.exports.configure = (app, logger) => {
     app.get('/', (req, res) => {
         res.render('index', {
             title: '~ THIS IS AMS API ~'
-        })
-    })
-
-    app.get('/logs', function (req, res) {
-        var filePath = appRoot + '/' + loggerConfig.file.filename
-
-        fs.readFile(filePath, function (err, data) {
-            res.contentType('application/json')
-            res.send(data)
         })
     })
 
@@ -77,13 +68,16 @@ module.exports.configure = (app, logger) => {
             action: 'POST',
             method: 'create',
             url: '/employee/create',
-            filter: [auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'POST',
             method: 'update',
             url: '/employee/update',
-            filter: [auth.requiresOrg]
+            filter: [auth.requiresToken]
         }])
+
+    api.model('logs')
+        .register('REST', [auth.requiresToken])
 
     api.model('insights')
         .register([{
@@ -149,7 +143,7 @@ module.exports.configure = (app, logger) => {
             action: 'GET',
             method: 'get',
             url: '/:id',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }])
 
     api.model('shiftTypes')
@@ -157,48 +151,48 @@ module.exports.configure = (app, logger) => {
             action: 'PUT',
             method: 'update',
             url: '/:id',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'POST',
             method: 'create',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'GET',
             url: '/byDate',
             method: 'getByDate',
-            filter: [auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'GET',
             method: 'search',
-            filter: [auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'GET',
             url: '/:id',
             method: 'get',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'DELETE',
             url: '/:id',
             method: 'delete',
-            filter: [auth.requiresOrg]
+            filter: [auth.requiresToken]
         }])
 
     api.model('channelTypes')
-        .register('REST', [auth.requiresToken, auth.requiresOrg])
+        .register('REST', [auth.requiresToken])
 
     api.model('channels')
-        .register('REST', [auth.requiresToken, auth.requiresOrg])
+        .register('REST', [auth.requiresToken])
 
     api.model('alertTypes')
         .register([{
             action: 'PUT',
             method: 'update',
             url: '/:id',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'POST',
             method: 'create',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'GET',
             method: 'search'
@@ -209,14 +203,14 @@ module.exports.configure = (app, logger) => {
         }])
 
     api.model('alerts')
-        .register('REST', [auth.requiresToken, auth.requiresOrg])
+        .register('REST', [auth.requiresToken])
 
     api.model('alerts')
         .register({
             action: 'PUT',
             method: 'subscribeAlert',
             url: '/subscribe/:id',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         })
 
     api.model('devices')
@@ -224,25 +218,40 @@ module.exports.configure = (app, logger) => {
             action: 'PUT',
             method: 'update',
             url: '/:id',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
+        }, {
+            action: 'PUT',
+            method: 'setStatus',
+            url: '/:id/status',
+            filter: [auth.requiresToken]
+        }, {
+            action: 'PUT',
+            method: 'setLastSyncTime',
+            url: '/:id/lastSyncTime',
+            filter: [auth.requiresToken]
         }, {
             action: 'POST',
             method: 'create',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
+        }, {
+            action: 'POST',
+            method: 'setLastSyncTime',
+            url: '/lastSyncTime',
+            filter: [auth.requiresToken]
         }, {
             action: 'GET',
             method: 'search',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'GET',
             url: '/:id',
             method: 'get',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'DELETE',
             method: 'delete',
             url: '/:id',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'POST',
             method: 'syncTimeLogs',
@@ -251,10 +260,10 @@ module.exports.configure = (app, logger) => {
         }])
 
     api.model('categories')
-        .register('REST', [auth.requiresToken, auth.requiresOrg])
+        .register('REST', [auth.requiresToken])
 
     api.model('machines')
-        .register('REST', [auth.requiresToken, auth.requiresOrg])
+        .register('REST', [auth.requiresToken])
 
     api.model('deviceTypes')
         .register('REST')
@@ -263,21 +272,21 @@ module.exports.configure = (app, logger) => {
         .register([{
             action: 'POST',
             method: 'create',
-            filter: [auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'GET',
             method: 'search',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'PUT',
             method: 'update',
             url: '/:id',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'DELETE',
             method: 'delete',
             url: '/:id',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'POST',
             method: 'reset',
@@ -292,15 +301,15 @@ module.exports.configure = (app, logger) => {
             action: 'POST',
             method: 'updateShiftWithXl',
             url: '/shiftUpdate/xl',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'GET',
             method: 'getRosterShiftExcel',
             url: '/roster/excelFormat',
-            filter: [auth.requiresToken, auth.requiresOrg]
-        }
+            filter: [auth.requiresToken]
+        }])
 
-        ])
+    api.model('biometrics').register('REST', auth.requiresToken)
 
     api.model('employees')
         .register([{
@@ -321,73 +330,50 @@ module.exports.configure = (app, logger) => {
             action: 'PUT',
             method: 'update',
             url: '/:id',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'GET',
             method: 'get',
             url: '/:id',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'GET',
             method: 'search',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'GET',
             method: 'searchInTeam',
             url: '/from/team',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'GET',
             method: 'getSupervisor',
             url: '/get/supervisor/:id',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'GET',
             method: 'getEmpByAdmin',
             url: '/forAdmin/:id',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'GET',
             method: 'getEmployeesBirthdays',
             url: '/get/birthdays',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'PUT',
             method: 'uploadNightShifters',
             url: '/uploadNightShifters/:shiftType',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'GET',
             method: 'syncEmployees',
             url: '/sync/updates',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'GET',
             method: 'notTakenLeaves',
             url: '/leaves/notTaken',
-            filter: [auth.requiresToken, auth.requiresOrg]
-        }, {
-            action: 'GET',
-            method: 'linksMagic',
-            url: '/get/linksMagic/:guid'
-        }, {
-            action: 'POST',
-            method: 'magicLink',
-            url: '/create/magicLink'
-        }, {
-            action: 'POST',
-            method: 'fingerRegistration',
-            url: '/:id/fingerPrint',
-            filter: [auth.requiresToken]
-        }, {
-            action: 'PUT',
-            method: 'updateFingerMark',
-            url: '/:id/fingerPrint',
-            filter: [auth.requiresToken]
-        }, {
-            action: 'GET',
-            method: 'getFingerMarks',
-            url: '/:id/fingerPrint',
             filter: [auth.requiresToken]
         }])
 
@@ -396,20 +382,20 @@ module.exports.configure = (app, logger) => {
             action: 'POST',
             method: 'createMultiple',
             url: '/many',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'POST',
             method: 'create',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'GET',
             method: 'get',
             url: '/:id',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'GET',
             method: 'search',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }])
 
     api.model('attendances')
@@ -417,142 +403,158 @@ module.exports.configure = (app, logger) => {
             action: 'GET',
             method: 'getSingleDayAttendancesExcel',
             url: '/dayReport',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'GET',
             method: 'getAttendanceLogs',
             url: '/:id/logs',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'GET',
             method: 'LocationLogsByDate',
             url: '/:id/getLocations',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'GET',
             method: 'getLocationLogs',
             url: '/:id/locationLogs',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'GET',
             method: 'singleEmployeeMonthlyReport',
             url: '/monthReport',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'GET',
             method: 'getOneDayAttendances',
             url: '/getOneDayAttendances',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
+            action: 'POST',
+            method: 'bulk',
+            url: '/bulk',
+            filter: [auth.requiresToken]
+        }, {
+            action: 'PUT',
+            method: 'continueShift',
+            url: '/:id/continue',
+            filter: [auth.requiresToken]
+        },
+        {
             action: 'GET',
             method: 'attendanceExtractor',
             url: '/extractor',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'GET',
             method: 'attendanceMonthlyPdf',
             url: '/monthlyPdf',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'GET',
             method: 'get',
             url: '/:id',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'GET',
             method: 'search',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'GET',
             method: 'summary',
             url: '/:id/summary',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'GET',
             method: 'getMonthlySummary',
             url: '/employee/month/summary',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'GET',
             method: 'upadteTeamInAttendance',
             url: '/update/team/in/attendance',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'GET',
             method: 'deleteTeamInAttendance',
             url: '/delete/team/in/attendance',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'PUT',
             method: 'update',
             url: '/:id',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'POST',
             method: 'create',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'POST',
             method: 'regenerate',
             url: '/regenerate',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'PUT',
             method: 'updateByExtServer',
             url: '/byExtServer/:empCode',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'POST',
             method: 'markAbsentAttendance',
             url: '/markAbsent',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'PUT',
             method: 'trackLocation',
             url: '/:id/addLocation',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'PUT',
             method: 'updateHoursWorked',
             url: '/update/hours/worked',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'GET',
             method: 'getCurrentDate',
             url: '/current/date',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'PUT',
             method: 'extendShift',
             url: '/:id/extendShift',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
+        }, {
+            action: 'PUT',
+            method: 'clearAction',
+            url: '/:id/clearAction',
+            filter: [auth.requiresToken]
         }])
 
     api.model('holidays')
         .register([{
             action: 'POST',
             method: 'create',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'GET',
             method: 'get',
             url: '/:date',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'GET',
             method: 'search',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }])
 
     api.model('leaveTypes')
-        .register('REST', [auth.requiresToken, auth.requiresOrg])
+        .register('REST', [auth.requiresToken])
 
     api.model('teams')
         .register({
             action: 'Get',
             url: '/:id/teamMembers',
             method: 'getMyTeam',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         })
 
     api.model('leaves')
@@ -560,50 +562,50 @@ module.exports.configure = (app, logger) => {
             action: 'PUT',
             url: '/:id/action',
             method: 'actionOnLeave',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'POST',
             method: 'create',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'POST',
             method: 'createMultiple',
             url: '/many',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'POST',
             method: 'bulk',
             url: '/bulk',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'GET',
             method: 'get',
             url: '/:id',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'DELETE',
             method: 'delete',
             url: '/:id',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'PUT',
             method: 'update',
             url: '/:id',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'GET',
             method: 'search',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'GET',
             url: '/my/teamLeaves',
             method: 'myTeamLeaves',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'GET',
             url: '/my/organization',
             method: 'organizationLeaves',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }])
 
     api.model('leaveBalances')
@@ -611,38 +613,41 @@ module.exports.configure = (app, logger) => {
             action: 'POST',
             method: 'leaveBalanceExtractorByExcel',
             url: '/importer/excel',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'POST',
             method: 'createForMany',
             url: '/forMany',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
+        }, {
+            action: 'POST',
+            method: 'runOvertimeRule',
+            url: '/run-overtime-rule',
+            filter: [auth.requiresToken]
         }, {
             action: 'PUT',
             method: 'update',
             url: '/:id',
-            filter: [auth.requiresToken, auth.requiresOrg]
-        },
-            //  {
-            //     action: 'GET',
-            //     method: 'search',
-            //     filter: [auth.requiresToken, auth.requiresOrg]
-            // },
-        {
+            filter: [auth.requiresToken]
+        }, {
+            action: 'POST',
+            method: 'grant',
+            url: '/:id/grant',
+            filter: [auth.requiresToken]
+        }, {
             action: 'GET',
-            method: 'getCurrentYearBal',
-            // url: '/employee/:id',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            method: 'search',
+            filter: [auth.requiresToken]
         }, {
             action: 'GET',
             method: 'organizationLeaveBalances',
             url: '/my/organization',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'PUT',
             method: 'multiUpdateBalance',
             url: '/multi/:employee',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }
         ])
 
@@ -654,32 +659,47 @@ module.exports.configure = (app, logger) => {
         }, {
             action: 'POST',
             method: 'create',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
+        }, {
+            action: 'PUT',
+            method: 'update',
+            url: '/:id',
+            filter: [auth.requiresToken]
+        }, {
+            action: 'POST',
+            method: 'move',
+            url: '/move',
+            filter: [auth.requiresToken]
         }, {
             action: 'POST',
             method: 'bulk',
             url: '/bulk',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
+        }, {
+            action: 'POST',
+            method: 'regenerate',
+            url: '/regenerate',
+            filter: [auth.requiresToken]
         }, {
             action: 'GET',
             method: 'search',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }])
 
     api.model('notifications')
         .register([{
             action: 'DELETE',
             method: 'delete',
-            filter: [auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'GET',
             method: 'search',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'PUT',
             method: 'archive',
             url: '/:id/archive/:employee',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }])
 
     api.model('messages')
@@ -687,18 +707,18 @@ module.exports.configure = (app, logger) => {
             action: 'POST',
             method: 'reportBug',
             url: '/reportBug',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }])
 
     api.model('deviceLogs')
         .register([{
             action: 'POST',
             method: 'create',
-            filter: [auth.requiresToken, auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'GET',
             method: 'search',
-            filter: [auth.requiresOrg]
+            filter: [auth.requiresToken]
         }])
 
     api.model('tags')
@@ -709,12 +729,12 @@ module.exports.configure = (app, logger) => {
         }, {
             action: 'POST',
             method: 'create',
-            filter: [auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'GET',
             url: '/byType/:id',
             method: 'tagsByTagType',
-            filter: [auth.requiresOrg]
+            filter: [auth.requiresToken]
         }])
 
     api.model('tagTypes')
@@ -725,15 +745,15 @@ module.exports.configure = (app, logger) => {
         }, {
             action: 'POST',
             method: 'create',
-            filter: [auth.requiresOrg]
+            filter: [auth.requiresToken]
         }, {
             action: 'GET',
             method: 'search',
-            filter: [auth.requiresOrg]
+            filter: [auth.requiresToken]
         }])
 
     api.model('reportRequests')
-        .register('REST', [auth.requiresToken, auth.requiresOrg])
+        .register('REST', [auth.requiresToken])
 
     api.model('systems')
         .register([{
@@ -744,6 +764,11 @@ module.exports.configure = (app, logger) => {
 
     api.model('tasks')
         .register('REST', [auth.requiresToken])
-
+        .register([{
+            action: 'PUT',
+            method: 'run',
+            url: '/:id/run',
+            filter: [auth.requiresToken]
+        }])
     logger.end()
 }

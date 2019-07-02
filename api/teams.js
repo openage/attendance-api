@@ -1,84 +1,69 @@
 'use strict'
-const mapper = require('../mappers/team')
-const empMapper = require('../mappers/employee')
-const moment = require('moment')
-const _ = require('underscore')
+const mapper = require('../mappers/employee')
 const db = require('../models')
 
-exports.getMyTeam = (req, res) => {
-    let fromDate = req.query.date ? moment(req.query.date).set('hour', 0).set('minute', 0).set('second', 0).set('millisecond', 0)._d
-        : moment().set('hour', 0).set('minute', 0).set('second', 0).set('millisecond', 0)._d
+const paging = require('../helpers/paging')
+const dates = require('../helpers/dates')
 
-    let toDate = req.query.date ? moment(req.query.date).set('hour', 0).set('minute', 0).set('second', 0).set('millisecond', 0).add(1, 'day')._d
-        : moment().set('hour', 0).set('minute', 0).set('second', 0).set('millisecond', 0).add(1, 'day')._d
-    let PageNo = Number(req.query.pageNo)
-    let pageSize = Number(req.query.pageSize)
-    let toPage = (PageNo || 1) * (pageSize || 10)
-    let fromPage = toPage - (pageSize || 10)
-    let pageLmt = (pageSize || 10)
+exports.getMyTeam = async (req) => {
+    let date = dates.date(req.query.date)
+
+    let fromDate = date.bod()
+
+    let toDate = date.eod()
+
+    let pageInput = paging.extract(req)
 
     let supervisor
     if (req.params.id === 'my') {
-        supervisor = req.employee.id.toString()
+        supervisor = req.context.employee.id
     } else {
         supervisor = req.params.id
     }
 
-    Promise.all([
-        db.employee.find({
-            $or: [{
-                supervisor: supervisor,
-                status: 'active'
-            }, {
-                supervisor: supervisor,
-                status: 'inactive',
-                deactivationDate: {
-                    $gte: moment().toDate()
-                }
-            }]
+    let where = {
+        $or: [{
+            supervisor: supervisor,
+            status: 'active'
+        }, {
+            supervisor: supervisor,
+            status: 'inactive',
+            deactivationDate: {
+                $gte: new Date()
+            }
+        }]
+    }
 
-        }).count(),
-        db.employee.find({
-            $or: [{
-                supervisor: supervisor,
-                status: 'active'
-            }, {
-                supervisor: supervisor,
-                status: 'inactive',
-                deactivationDate: {
-                    $gte: moment().toDate()
-                }
-            }]
+    let total = await db.employee.find(where).count()
 
-        })
-            .skip(fromPage).limit(pageLmt)
+    let employees
 
-    ])
-        .spread((totalCount, data) => {
-            return Promise.mapSeries(data, teamMember => {
-                return db.employee.findById(teamMember.id.toString())
-                    .populate('shiftType supervisor')
-                    .then((employee) => {
-                        return db.attendance.findOne({
-                            employee: teamMember.id.toString(),
-                            ofDate: {
-                                $gte: fromDate,
-                                $lt: toDate
-                            }
-                        })
-                            .populate('recentMostTimeLog')
-                            .then(attendance => {
-                                if (employee) {
-                                    employee.attendance = attendance
-                                    employee.today = !req.query.date
-                                    return employee
-                                }
-                            })
-                    })
-            })
-                .then((team) => {
-                    res.page(empMapper.toSearchModel(team), pageSize, PageNo, totalCount)
-                })
-                .catch(err => res.failure(err))
-        })
+    if (pageInput) {
+        employees = await db.employee.find(where).skip(pageInput.skip).limit(pageInput.limit).populate('shiftType supervisor')
+    } else {
+        employees = await db.employee.find(where).populate('shiftType supervisor')
+    }
+
+    for (const employee of employees) {
+        employee.today = !req.query.date
+        employee.attendance = await db.attendance.findOne({
+            employee: employee.id.toString(),
+            ofDate: {
+                $gte: fromDate,
+                $lt: toDate
+            }
+        }).populate('recentMostTimeLog timeLogs').populate({ path: 'shift', populate: { path: 'shiftType' } })
+    }
+
+    let page = {
+        items: mapper.toSearchModel(employees)
+    }
+
+    if (pageInput) {
+        page.total = total
+        page.pageNo = pageInput.pageNo
+        page.pageSize = pageInput.limit
+    }
+
+    return page
 }

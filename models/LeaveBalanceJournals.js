@@ -2,18 +2,18 @@
 
 var mongoose = require('mongoose')
 
-var LeaveBalanceJournal = new mongoose.Schema({
+var entity = new mongoose.Schema({
     date: Date,
     units: Number,
-    action: {
-        type: String,
-        enum: ['absent', 'present', 'onLeave']
-    }
+    leaveType: { type: mongoose.Schema.Types.ObjectId, ref: 'leaveBalance' },
+
+    created_At: { type: Date, default: Date.now },
+    timeStamp: { type: Date, default: Date.now }
 })
 
-LeaveBalanceJournal.pre('save', function (next) {
+entity.pre('save', function (next) {
     this.timeStamp = Date.now()
     next()
 })
 
-mongoose.model('LeaveBalanceJournal', LeaveBalanceJournal)
+mongoose.model('leaveBalanceJournal', entity)

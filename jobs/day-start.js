@@ -4,41 +4,37 @@ const logger = require('@open-age/logger')('JOB day-start')
 const cron = require('cron').CronJob
 const offline = require('@open-age/offline-processor')
 const contextBuilder = require('../helpers/context-builder')
-const db = require('../models')
 const moment = require('moment')
+const organizationService = require('../services/organizations')
 
-const start = async (organizationCode, date) => {
+const start = async (orgCodes, date) => {
     date = date || new Date()
-    let where = {
-        //    status: 'active'
-    }
 
-    if (organizationCode) {
-        where.code = organizationCode
-    }
-
-    let organizations = await db.organization.find(where)
+    let organizations = await organizationService.getByCodes(orgCodes, { logger: logger })
 
     for (const organization of organizations) {
         let log = logger.start(`${organization.code}:${moment(date).format('YY-MM-DD')}`)
-
         let context = await contextBuilder.create({
             organization: organization
         }, log)
-        context.processSync = true
-        await offline.queue('day', 'start', {
+
+        if (!context.getConfig('jobs.day.start')) {
+            continue
+        }
+
+        await offline.queue('work-day', 'start', {
             date: date
         }, context)
         log.end()
     }
 }
 
-exports.schedule = () => {
+exports.schedule = (orgCodes) => {
     let log = logger.start('schedule')
     new cron({
         cronTime: `10 10 00 * * *`,
         onTick: () => {
-            start()
+            start(orgCodes)
         },
         start: true
     })
@@ -46,6 +42,6 @@ exports.schedule = () => {
     log.end()
 }
 
-exports.run = async (organizationCode, date) => {
-    await start(organizationCode, date)
+exports.run = async (orgCodes, date) => {
+    await start(orgCodes, date)
 }

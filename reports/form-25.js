@@ -1,119 +1,16 @@
 'use strict'
-const moment = require('moment')
-const logger = require('@open-age/logger')('reports')
 const formatter = require('../formatters/form-25')
-const db = require('../models')
+const monthlySummaryService = require('../services/monthly-summaries')
 
 module.exports = async (params, context) => {
-    let organization = context.organization
-
-    let query = {
-        organization: global.toObjectId(organization.id),
-        status: 'active'
-    }
-
-    let attendances = []
-
-    let ofDate = params.from
-
-    let getExtraHours = {
-        byShiftEnd: false,
-        byShiftLength: false
-    }
-
-    let fromDate = ofDate ? moment(ofDate).startOf('month') : moment().startOf('month')
-
-    let toDate = ofDate ? moment(ofDate).endOf('month') : moment().endOf('month')
-
+    let ofDate = params.dates && params.dates.from ? params.dates.from : new Date()
     let fileName = `${context.reportRequest.type}-${context.reportRequest.id}.xlsx`
+    let monthlysummary = await monthlySummaryService.search(params, {
+        columns: []
+    }, context)
+    let monthlySummaryIds = monthlysummary.items
 
-    var orgDetails = {
-        orgName: context.organization.name,
-        downloaderName: context.employee.name,
-        downloaderEmail: context.employee.email,
-        downloaderPhone: context.employee.phone
-    }
-
-    if (params.name) {
-        query.name = {
-            $regex: params.name,
-            $options: 'i'
-        }
-    }
-
-    if (params.tagIds && params.tagIds.length) {
-        let tagIds = []
-        let queryTags = params.tagIds.split(',')
-        Promise.each(queryTags, (tagId) => {
-            tagIds.push(global.toObjectId(tagId))
-        })
-        query.tags = {
-            $in: tagIds
-        }
-    }
-
-    if (params.supervisor) {
-        query.supervisor = global.toObjectId(params.supervisor)
-    }
-
-    if (params.code) {
-        query.code = {
-            $regex: params.code,
-            $options: 'i'
-        }
-    }
-
-    if (params.shiftType) {
-        query.shiftType = global.toObjectId(params.shiftType)
-    }
-
-    let employees = await db.employee.aggregate([{
-        $match: query
-    }, {
-        $project: {
-            name: 1,
-            code: 1,
-            designation: 1
-        }
-    }])
-
-    employees = employees.sort((a, b) => {
-        return a.code - b.code
-    })
-    await Promise.each(employees, async (employee) => {
-        await Promise.all([
-            db.leave.find({
-                employee: global.toObjectId(employee._id),
-                status: 'approved',
-                date: {
-                    $gte: fromDate,
-                    $lt: moment()
-                }
-            }).populate('leaveType'),
-            db.monthSummary.findOne({
-                employee: employee,
-                weekStart: fromDate,
-                weekEnd: toDate
-            }).populate({
-                path: 'attendances',
-                populate: {
-                    path: 'shift',
-                    populate: {
-                        path: 'shiftType'
-                    }
-                }
-            })
-        ])
-            .spread((leaves, monthLog) => {
-                return attendances.push({
-                    employee: employee,
-                    leaves: leaves,
-                    monthLog: monthLog
-                })
-            })
-    })
-
-    const report = await formatter.build(fileName, ofDate, getExtraHours, attendances, orgDetails)
+    await formatter.build(fileName, ofDate, monthlySummaryIds, context)
 
     return Promise.resolve({
         fileName: fileName

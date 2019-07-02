@@ -1,6 +1,54 @@
 'use strict'
 const db = global.db
 
+exports.employeeQuery = (req) => {
+    let query = {
+        'status': 'active',
+        'organization': global.toObjectId(req.context.organization.id)
+    }
+
+    if (req.query.name) {
+        query['name'] = {
+            $regex: req.query.name,
+            $options: 'i'
+        }
+    }
+
+    // if (req.query.status) {
+    //     if (req.query.status == 'present') {
+    //         req.query.status = /present|checkedin|checked-in-again/
+    //     }
+    //     query.status = {
+    //         $regex: req.query.status,
+    //         $options: 'i'
+    //     }
+    // }
+
+    if (req.query.code) {
+        query['code'] = {
+            $regex: req.query.code,
+            $options: 'i'
+        }
+    }
+
+    if (req.query.tagIds) {
+        let tagIds = []
+        let queryTags = req.query.tagIds.split(',')
+        _.each(queryTags, (tagId) => {
+            tagIds.push(global.toObjectId(tagId))
+        })
+        query['tags'] = {
+            $in: tagIds
+        }
+    }
+
+    if (req.query.shiftTypeId) {
+        query['shiftType'] = global.toObjectId(req.query.shiftTypeId)
+    }
+
+    return query
+}
+
 let findOrg = data => {
     return db.organization.findOne(data)
 }

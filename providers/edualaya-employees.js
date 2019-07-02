@@ -77,11 +77,11 @@ const formatEmployee = (emp, context) => {
     return formattedEmployee
 }
 /**
-     * fetches employees from ems
-     * @param fromDate - the date since when the employees have changed
-     * @param config - ems config of that org
-     * @returns employees
-     */
+ * fetches employees from ems
+ * @param fromDate - the date since when the employees have changed
+ * @param config - ems config of that org
+ * @returns employees
+ */
 exports.fetch = (config, context) => {
     return getEmployees(parsedConfig(config), context).then(employees => {
         return _(employees).map((emp) => {

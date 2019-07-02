@@ -1,8 +1,6 @@
 const db = require('../../../models')
 
-exports.process = async (data, context) => {
-    let leaveType = await db.leaveType.findById(data.id)
-
+exports.process = async (leaveType, context) => {
     let employees = await db.employee.find({
         'status': 'active',
         'organization': context.organization
@@ -16,7 +14,9 @@ exports.process = async (data, context) => {
     }
 
     for (const employee of employees) {
-        context.logger.debug(`creating leave balance of ${employee.name}`)
+        context.logger.start({
+            employee: employee.id
+        }`creating leave balance of ${employee.name}`)
         await new db.leaveBalance({
             leaveType: leaveType,
             employee: employee,

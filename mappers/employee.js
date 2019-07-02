@@ -1,18 +1,21 @@
 'use strict'
 let _ = require('underscore')
-let moment = require('moment')
 
 exports.toModel = entity => {
     var model = {
         id: entity.id || entity._id.toString(),
         name: entity.name,
         code: entity.code,
+        fatherName: entity.fatherName,
+        biometricCode: entity.biometricCode,
         designation: entity.designation,
+        department: entity.department,
+        division: entity.division,
         picData: entity.picData,
         picUrl: entity.picUrl === '' ? null : entity.picUrl,
         email: entity.email,
         phone: entity.phone,
-        tags: entity.tags,
+        tags: [],
         totalLeaveBalance: entity.totalLeaveBalance,
         userType: entity.userType || 'normal',
         absentDays: entity.absentDays,
@@ -48,10 +51,23 @@ exports.toModel = entity => {
     }
 
     if (entity.devices && entity.devices.length) {
-        model.devices = entity.devices.map((device) => {
-            return {
-                id: device.id,
-                status: device.status
+        model.devices = entity.devices.map((item) => {
+            return item._doc ? {
+                id: item.id,
+                status: item.status
+            } : {
+                id: item.toString()
+            }
+        })
+    }
+
+    if (entity.tags && entity.tags.length) {
+        model.tags = entity.tags.map(item => {
+            return item._doc ? {
+                id: item.id,
+                name: item.name
+            } : {
+                id: item.toString()
             }
         })
     }
@@ -84,7 +100,14 @@ exports.toModel = entity => {
                 name: entity.shiftType.name,
                 code: entity.shiftType.code,
                 startTime: entity.shiftType.startTime,
-                endTime: entity.shiftType.endTime
+                endTime: entity.shiftType.endTime,
+                monday: entity.shiftType.monday,
+                tuesday: entity.shiftType.tuesday,
+                wednesday: entity.shiftType.wednesday,
+                thursday: entity.shiftType.thursday,
+                friday: entity.shiftType.friday,
+                saturday: entity.shiftType.saturday,
+                sunday: entity.shiftType.sunday
             }
         } else {
             model.shiftType = {
@@ -134,18 +157,33 @@ exports.toModel = entity => {
             shift: {}
         }
 
-        if (entity.attendance.shift) {
+        if (entity.attendance.shift && entity.attendance.shift._doc) {
+            let shift = entity.attendance.shift
             model.attendance.shift = {
-                status: entity.attendance.shift.status,
-                date: entity.attendance.shift.date
+                status: shift.status,
+                date: shift.date
+            }
+
+            if (shift.shiftType && shift.shiftType._doc) {
+                let shiftType = shift.shiftType
+                model.attendance.shift.shiftType = {
+                    name: shiftType.name
+                }
             }
         }
 
         if (entity.attendance.timeLogs && entity.attendance.timeLogs.length) {
+            model.timeLogs = []
             entity.attendance.timeLogs.forEach(item => {
                 if (!entity.attendance.recentMostTimeLog || entity.attendance.recentMostTimeLog.time < item.time) {
                     entity.attendance.recentMostTimeLog = item
                 }
+                model.timeLogs.push({
+                    id: item.id,
+                    type: item.type || ' ',
+                    time: item.time,
+                    source: item.source
+                })
             })
         }
 
@@ -155,7 +193,7 @@ exports.toModel = entity => {
                     id: entity.attendance.recentMostTimeLog.id,
                     type: entity.attendance.recentMostTimeLog.type,
                     device: entity.attendance.recentMostTimeLog.device,
-                    employee: entity.attendance.recentMostTimeLog.employee,
+                    employee: {},
                     time: entity.attendance.recentMostTimeLog.time,
                     source: entity.attendance.recentMostTimeLog.source
                 }
@@ -165,6 +203,21 @@ exports.toModel = entity => {
                 }
             }
         }
+
+        if (entity.attendance.recentMostTimeLog) {
+            if (entity.attendance.recentMostTimeLog.employee) {
+                if (entity.attendance.recentMostTimeLog.employee._doc) {
+                    model.attendance.recentMostTimeLog.employee = {
+                        id: entity.attendance.recentMostTimeLog.employee.id
+                    }
+                } else {
+                    model.attendance.recentMostTimeLog.employee = {
+                        id: entity.attendance.recentMostTimeLog.employee.toString()
+                    }
+                }
+            }
+        }
+
         if (entity.attendance.team) {
             if (entity.today) {
                 model.team = {

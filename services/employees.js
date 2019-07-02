@@ -6,48 +6,24 @@ const moment = require('moment')
 const tagTypeService = require('../services/tag-types')
 const jimp = require('jimp')
 const _ = require('underscore')
-const auth = require('../middleware/authorization')
+const auth = require('../helpers/auth')
 const offline = require('@open-age/offline-processor')
 const teams = require('../services/teams')
+const tasks = require('../services/tasks')
+
+const shiftTypeService = require('./shift-types')
+const attendanceService = require('./attendances')
+const employeeGetter = require('./employee-getter')
+
+const monthlySummaryService = require('./monthly-summaries')
+const contextBuilder = require('../helpers/context-builder')
 
 const dates = require('../helpers/dates')
 const db = require('../models')
 
-const set = (model, entity, operation, context) => {
-    if (model.fingerPrint) {
-        entity.fingerPrints.push(model.fingerPrint)
-    }
+const shiftService = require('./shifts')
 
-    if (model.device) {
-        const device = entity.devices.find(item => {
-            if (item._doc) { return item._doc.id.toString() === model.device.toString() }
-        })
-
-        switch (operation.toLowerCase()) {
-        case 'add':
-            if (!device) {
-                entity.devices.push({ id: model.device })
-            } else {
-                device.status = 'enable'
-            }
-            break
-        case 'remove':
-            if (device) {
-                device.status = 'disable'
-            }
-            break
-        case 'delete':
-            if (device) {
-                let index = entity.devices.indexOf(device)
-                if (index > -1) {
-                    entity.devices.splice(index, 1)
-                }
-            }
-            break
-        default:
-        }
-    }
-}
+const biometricService = require('./biometrics')
 
 exports.addEffectiveShift = (item, orgId, callback) => {
     let query = {
@@ -55,7 +31,10 @@ exports.addEffectiveShift = (item, orgId, callback) => {
         code: item.empCode
     }
     async.eachSeries(item.rosterShiftTypes, (rosterShiftType, next) => {
-        db.shiftType.findOne({ organization: orgId, code: rosterShiftType.code })
+        db.shiftType.findOne({
+            organization: orgId,
+            code: rosterShiftType.code
+        })
             .then((shift) => {
                 if (!shift) {
                     throw new Error('No ShiftType Found')
@@ -120,7 +99,9 @@ let addNewEmp = employee => {
             context.employee = null
             context.organization.id = employee.organization.id.toString()
             context.processSync = true
-            offline.queue('employee', 'new', { employee: emp }, context)
+            offline.queue('employee', 'new', {
+                id: emp.id
+            }, context)
 
             if (!employee.picUrl) {
                 return emp.save()
@@ -186,7 +167,9 @@ let leveTypeManager = (employee, callback) => {
                             leaveType: leaveType,
                             units: 0,
                             unitsAvailed: 0
-                        }, { upsert: true }).then(() => {
+                        }, {
+                            upsert: true
+                        }).then(() => {
                             next()
                         })
                     }, (err) => {
@@ -200,7 +183,9 @@ let leveTypeManager = (employee, callback) => {
         }
     ],
     (err, employee) => {
-        if (callback) { callback(err, employee) }
+        if (callback) {
+            callback(err, employee)
+        }
     })
 }
 
@@ -219,7 +204,7 @@ let extractTags = async (model, context) => {
 
         if (model[key]) {
             let tag = (await db.tag.findOrCreate({
-                name: (model[key].name || model[key]).toLowerCase(),
+                name: (model[key].name || model[key]),
                 tagType: tagType.id,
                 status: 'active'
             })).result
@@ -231,7 +216,7 @@ let extractTags = async (model, context) => {
     return newTags
 }
 
-let employeeManeger = employees => {
+let employeeManager = employees => {
     return Promise.mapSeries(employees, item => {
         let query = {
             organization: item.organization.id
@@ -250,7 +235,11 @@ let employeeManeger = employees => {
                         organization: item.organization.id,
                         EmpDb_Emp_id: item.EmpDb_Emp_id
                     }).populate('tags shiftType').then(emp => {
-                        if (emp) { return updateExistingEmp(emp, item) } else { return addNewEmp(item) }
+                        if (emp) {
+                            return updateExistingEmp(emp, item)
+                        } else {
+                            return addNewEmp(item)
+                        }
                     }).catch(err => {
                         throw err
                     })
@@ -308,7 +297,9 @@ let shiftManeger = employees => { // if no shift then in general (find or create
         sunday: 'off',
         organization: employees[0].organization
     }).then(data => {
-        employees.forEach(employee => { employee.shiftType = data.result })
+        employees.forEach(employee => {
+            employee.shiftType = data.result
+        })
         return employees
     }).catch(err => err)
 }
@@ -325,12 +316,111 @@ let teamManeger = employee => {
         })
 }
 
+const mergeEmployee = async (into, from, context) => {
+    // TODO: implement this
+    return null
+}
+
+const setBiometricCode = async (employee, biometricCode, context) => {
+    let existingEmployee = await db.employee.findOne({
+        biometricCode: biometricCode,
+        organization: context.organization
+    })
+
+    if (existingEmployee && existingEmployee.status === 'active') {
+        throw new Error(`Employee with code '${existingEmployee.code}' is using this biometric code`)
+    }
+
+    if (existingEmployee && existingEmployee.status === 'temp') {
+        await mergeEmployee(employee, existingEmployee, context)
+    }
+
+    if (employee.biometricCode && biometricCode && employee.biometricCode !== biometricCode) {
+        await biometricService.updateCode(employee, biometricCode, context)
+    }
+
+    employee.biometricCode = biometricCode
+
+    return employee
+}
+
+const setSupervisor = async (employee, supervisor, context) => {
+    let newSupervisor = await db.employee.findOne({
+        code: supervisor.code,
+        organization: context.organization
+    })
+
+    if (!newSupervisor) {
+        supervisor.shiftType = employee.shiftType
+        newSupervisor = await updateCreateEmployee(supervisor, context)
+    }
+
+    employee.supervisor = newSupervisor
+    await teams.setSupervisor(employee, employee.supervisor, context)
+
+    return employee
+}
+
+const setShiftType = async (employee, shiftTypeModel, context) => {
+    if (employee.shiftType && (employee.shiftType.id === shiftTypeModel.id || employee.shiftType.code === shiftTypeModel.code)) {
+        return employee
+    }
+
+    let shiftType = await shiftTypeService.get(shiftTypeModel, context)
+    employee.shiftType = shiftType
+
+    await attendanceService.setShift(dates.date(new Date()).bod(), employee, shiftType, context)
+
+    return employee
+}
+
+const weeklyOff = (employee, weeklyOffModel, context) => {
+    employee.weekOff = employee.weekOff || {}
+
+    if (weeklyOffModel.sunday !== undefined) {
+        employee.weeklyOff.sunday = weeklyOffModel.sunday
+    }
+    if (weeklyOffModel.monday !== undefined) {
+        employee.weeklyOff.monday = weeklyOffModel.monday
+    }
+    if (weeklyOffModel.tuesday !== undefined) {
+        employee.weeklyOff.tuesday = weeklyOffModel.tuesday
+    }
+    if (weeklyOffModel.wednesday !== undefined) {
+        employee.weeklyOff.wednesday = weeklyOffModel.wednesday
+    }
+    if (weeklyOffModel.thursday !== undefined) {
+        employee.weeklyOff.thursday = weeklyOffModel.thursday
+    }
+    if (weeklyOffModel.friday !== undefined) {
+        employee.weeklyOff.friday = weeklyOffModel.friday
+    }
+    if (weeklyOffModel.saturday !== undefined) {
+        employee.weeklyOff.saturday = weeklyOffModel.saturday
+    }
+
+    employee.weeklyOff.isConfigured = employee.weeklyOff.sunday ||
+        employee.weeklyOff.monday ||
+        employee.weeklyOff.tuesday ||
+        employee.weeklyOff.wednesday ||
+        employee.weeklyOff.thursday ||
+        employee.weeklyOff.friday ||
+        employee.weeklyOff.saturday
+
+    return employee
+}
+
 const setEntity = async (employee, model, context) => {
+    let snapShotModel = {
+        employeeId: model.id,
+        isDynamicShift: true
+    }
+
     if (model.name) {
         employee.name = model.name
     }
 
-    if (model.picUrl) {
+    if (model.picUrl && employee.picUrl !== model.picUrl) {
         employee.picUrl = model.picUrl
         employee.picData = await getPicDataFromUrl(employee.picUrl)
     }
@@ -343,6 +433,10 @@ const setEntity = async (employee, model, context) => {
         employee.phone = model.phone
     }
 
+    if (model.fatherName) {
+        employee.fatherName = model.fatherName
+    }
+
     if (model.email) {
         employee.email = model.email
     }
@@ -351,12 +445,26 @@ const setEntity = async (employee, model, context) => {
         employee.code = model.code
     }
 
-    if (model.displayCode) {
-        employee.displayCode = model.displayCode
+    if (model.biometricCode && employee.biometricCode !== model.biometricCode) {
+        employee = await setBiometricCode(employee, model.biometricCode, context)
+    }
+
+    if (model.supervisor && model.supervisor.code && (!employee.supervisor || employee.supervisor.code !== model.supervisor.code)) {
+        employee = await setSupervisor(employee, model.supervisor, context)
     }
 
     if (model.dob) {
         employee.dob = model.dob
+    }
+
+    if (model.isDynamicShift !== undefined) {
+        let shiftTypes = await shiftTypeService.search(snapShotModel, context)
+
+        if (shiftTypes && shiftTypes.length) {
+            employee.isDynamicShift = model.isDynamicShift
+        } else if (shiftTypes && shiftTypes.length === 0) {
+            return `No dynamicShift found for employee with code: ${model.code}`
+        }
     }
 
     if (model.token) {
@@ -375,16 +483,29 @@ const setEntity = async (employee, model, context) => {
         employee.designation = model.designation.name || model.designation
     }
 
+    if (model.division) {
+        employee.division = model.division.name || model.division
+    }
+
     if (model.department) {
         employee.department = model.department.name || model.department
+    }
+    if (model.config) {
+        if (model.config.employmentType === 'contract') {
+            if (model.config && model.config.contractor) {
+                employee.contractor = model.config.contractor.name.toLowerCase() || model.config.contractor
+            }
+        } else if (model.config.employmentType === 'permanent') {
+            employee.contractor = ''
+        }
     }
 
     if (model.userType) {
         employee.userType = model.userType
     }
 
-    if (model.contractor) {
-        employee.contractor = model.contractor
+    if (model.config) {
+        employee.config = model.config
     }
 
     if (model.dol || model.deactivationDate) {
@@ -394,8 +515,53 @@ const setEntity = async (employee, model, context) => {
     }
 
     if (model.status) {
+        if (employee.status !== model.status && model.status === 'inactive') {
+            await biometricService.remove(employee, context)
+        }
         employee.status = model.status
     }
+
+    if (model.role) {
+        employee.role = employee.role || {}
+        employee.role.id = model.role.id
+        employee.role.code = model.role.code
+        employee.role.key = model.role.key
+        employee.role.permissions = model.role.permissions || []
+    }
+
+    if (model.shiftType) {
+        employee = await setShiftType(employee, model.shiftType, context)
+    }
+
+    if (model.weeklyOff) {
+        employee = await weeklyOff(employee, model.weeklyOff, context)
+    }
+
+    if (model.devices) { // TODO: this is obsolete
+        employee.devices = []
+
+        if (model.devices.length) {
+            model.devices.forEach(item => {
+                employee.devices.push({
+                    id: item.device,
+                    status: item.status || 'enable',
+                    code: item.code || employee.biometricCode || employee.code
+                })
+            })
+        }
+    }
+
+    if (model.abilities) {
+        employee.abilities = employee.abilities || {}
+        Object.keys(model.abilities).forEach(key => {
+            employee.abilities[key] = model.abilities[key]
+        })
+        employee.markModified('abilities')
+    }
+
+    await monthlySummaryService.updateEmployee(employee, context)
+
+    // employee.tags = await extractTags(model, context)
 
     return employee
 }
@@ -404,7 +570,6 @@ const updateCreateEmployee = async (model, context) => {
     if (!model) {
         return
     }
-
     let isNew = false
 
     let employee = await db.employee.findOne({
@@ -416,6 +581,14 @@ const updateCreateEmployee = async (model, context) => {
         employee = await db.employee.findOne({
             organization: context.organization.id,
             EmpDb_Emp_id: model.EmpDb_Emp_id
+        }).populate('tags shiftType supervisor')
+    }
+
+    if (!employee && model.biometricCode) {
+        employee = await db.employee.findOne({
+            organization: context.organization.id,
+            biometricCode: model.biometricCode,
+            status: 'temp'
         }).populate('tags shiftType supervisor')
     }
 
@@ -432,58 +605,69 @@ const updateCreateEmployee = async (model, context) => {
 
     await setEntity(employee, model, context)
 
-    if (model.supervisor && model.supervisor.code &&
-        (!employee.supervisor || employee.supervisor.code !== model.supervisor.code)) {
-        let newSupervisor = await db.employee.findOne({
-            code: model.supervisor.code,
-            organization: context.organization
-        })
-
-        if (!newSupervisor) {
-            model.supervisor.shiftType = employee.shiftType
-            newSupervisor = await updateCreateEmployee(model.supervisor, context)
-        }
-
-        employee.supervisor = newSupervisor
-        await teams.setSupervisor(employee, employee.supervisor, context)
-    }
-
-    employee.tags = await extractTags(model, context)
-
     await employee.save()
 
     if (isNew) {
-        await offline.queue('employee', 'new', { employee: employee }, context)
+        await offline.queue('employee', 'new', {
+            id: employee.id
+        }, context)
     }
 
     return employee
 }
 
+exports.create = async (model, context) => {
+    let log = context.logger.start('services/employees:create')
+
+    if (!model) {
+        return
+    }
+
+    let isNew = false
+    let employee
+    if (model.code) {
+        employee = await db.employee.findOne({
+            organization: context.organization.id,
+            code: model.code
+        }).populate('tags shiftType supervisor')
+    }
+
+    if (!employee && model.EmpDb_Emp_id) {
+        employee = await db.employee.findOne({
+            organization: context.organization.id,
+            EmpDb_Emp_id: model.EmpDb_Emp_id
+        }).populate('tags shiftType supervisor')
+    }
+
+    if (!employee) {
+        isNew = true
+        employee = new db.employee({
+            status: model.status || 'active',
+            EmpDb_Emp_id: model.EmpDb_Emp_id,
+            organization: context.organization
+        })
+    }
+    await setEntity(employee, model, context)
+    await employee.save()
+    if (isNew) {
+        await offline.queue('employee', 'new', {
+            id: employee.id
+        }, context)
+    }
+    log.end()
+    return employee
+}
+
+exports.update = async (model, employee, context) => {
+    let log = context.logger.start('services/employees:update')
+    await setEntity(employee, model, context)
+    await employee.save()
+    log.end()
+    return employee
+}
+
 exports.get = async (query, context) => {
-    let log = context.logger.start('services/employees:get')
-    let where = {
-        organization: context.organization
-    }
-    if (typeof query === 'string') {
-        if (query.isObjectId()) {
-            return db.employee.findById(query).populate('supervisor')
-        }
-        where.code = query
-        return db.employee.findOne(where).populate('supervisor')
-    }
-    if (query.id) {
-        return db.employee.findById(query._bsontype === 'ObjectID' ? query.toString() : query.id).populate('supervisor')
-    }
-
-    if (query.code) {
-        where.code = query.code
-        return db.employee.findOne(where).populate('supervisor')
-    }
-
-    let error = new Error(`invalid query '${query}'`)
-    log.error(error)
-
-    throw error
+    return employeeGetter.get(query, context)
 }
 
 /**
@@ -494,7 +678,9 @@ exports.getByCode = async (code, context) => {
     let employee = await db.employee.findOne({
         code: code,
         organization: context.organization
-    }).populate({ path: 'shiftType' }).populate('supervisor')
+    }).populate({
+        path: 'shiftType'
+    }).populate('supervisor')
 
     if (employee) {
         return employee
@@ -533,52 +719,8 @@ exports.sync = async (employeeChannel, context) => {
     }
 }
 
-const addFingerPrint = async (id, model, operation, context) => {
-    const log = logger.start('addFingerPrint')
-
-    const entity = await db.employee.findById(id)
-    context.processSync = true
-    context.organization = {
-        id: entity.organization.toString()
-    }
-
-    set(model, entity, operation, context)
-
-    offline.queue('employee', `${operation}-finger-print`, { employee: entity.id, device: model.device }, context)
-
-    return entity.save()
-}
-
-const addOrUpdateFingerMark = async (id, model, context) => {
-    const log = logger.start('addFingerPrint')
-    if (!model.employee) {
-        model.employee = id
-    }
-
-    const fingerPrint = await db.fingerPrint.findOneAndUpdate({
-        employee: id
-    }, {
-        $set: model
-    }, {
-        upsert: true
-    })
-
-    return fingerPrint
-}
-
-const getFingerMark = async (id, context) => {
-    const log = logger.start('getFingerMark')
-
-    const fingerPrint = await db.fingerPrint.findOne({ employee: id })
-
-    return fingerPrint
-}
-
 exports.teamManeger = teamManeger
 exports.shiftManeger = shiftManeger
-exports.addFingerPrint = addFingerPrint
-exports.employeeManeger = employeeManeger
+exports.employeeManager = employeeManager
 exports.getPicDataFromUrl = getPicDataFromUrl
 exports.updateCreateEmployee = updateCreateEmployee
-exports.addOrUpdateFingerMark = addOrUpdateFingerMark
-exports.getFingerMark = getFingerMark

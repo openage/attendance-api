@@ -1,6 +1,8 @@
 'use strict'
 let _ = require('underscore')
 
+let moment = require('moment')
+
 exports.toModel = entity => {
     var model = {
         name: entity.name,
@@ -10,7 +12,15 @@ exports.toModel = entity => {
         port: entity.port,
         mute: [],
         interval: entity.interval,
-        type: entity.type
+        type: entity.type,
+        status: entity.status,
+        lastSeen: entity.lastSeen
+    }
+
+    let fromNow = moment(new Date()).diff(entity.lastSeen, 'm')
+
+    if (fromNow > 10 && entity.status === 'online') {
+        model.status = 'not-available'
     }
 
     if (entity.mute && entity.mute.length) {

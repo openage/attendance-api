@@ -8,18 +8,16 @@ const employees = require('../services/employees')
 const dates = require('../helpers/dates')
 const shiftTypes = require('../services/shift-types')
 
-var createEffectiveShift = (data) => {
-    return db.effectiveShift.findOne({ employee: data.employee, date: data.date, shiftType: data.shiftType })
-        .then((effectiveShiftType) => {
-            if (!effectiveShiftType) {
-                return new db.effectiveShift(data).save()
-            }
-            return effectiveShiftType
-        })
-        .catch((err) => {
-            logger.error(err)
-            return err
-        })
+var createEffectiveShift = async (data) => {
+    let effectiveShiftType = await db.effectiveShift.findOne({
+        employee: data.employee,
+        date: data.date,
+        shiftType: data.shiftType
+    })
+    if (!effectiveShiftType) {
+        return new db.effectiveShift(data).save()
+    }
+    return effectiveShiftType
 }
 
 exports.reset = async (context) => {
@@ -32,6 +30,13 @@ exports.reset = async (context) => {
         .populate('shiftType')
 }
 
+/**
+ * {
+ *   employee: {id: String},
+ *   shiftType: {id: String},
+ *   date: Date,
+ * }
+*/
 exports.create = async (model, context) => {
     let employee = await employees.get(model.employee, context)
     if (!employee) {
@@ -67,51 +72,3 @@ exports.create = async (model, context) => {
 
     return effectiveShift
 }
-
-exports.addEffectiveShift = (employee, orgId, callback) => {
-    let query = {
-        organization: orgId,
-        code: employee.empCode
-    }
-    return async.eachSeries(employee.rosterShiftTypes, (rosterShiftType, next) => {
-        return db.shiftType.findOne({ organization: orgId, code: rosterShiftType.code })
-            .then((shift) => {
-                if (!shift) {
-                    throw new Error('No ShiftType Found')
-                }
-                let data = {
-                    shiftType: shift.id,
-                    date: moment(rosterShiftType.date, 'DD/MM/YYYY', true),
-                    organization: orgId
-                }
-                return db.employee.findOne(query)
-                    .then((employee) => {
-                        if (!employee) {
-                            throw new Error('No Employee Found')
-                        }
-                        data.employee = employee.id
-                        data.supervisor = employee.supervisor.toString()
-                        return createEffectiveShift(data)
-                            .then((shift) => {
-                                console.log('shiftType Add')
-                                next()
-                            })
-                    })
-                    .catch(err => {
-                        logger.error(err)
-                        next()
-                    })
-            })
-            .catch((err) => {
-                logger.error(err)
-                next()
-            })
-    }, (err) => {
-        if (err) {
-            return callback(err)
-        }
-        return callback(null)
-    })
-}
-
-exports.createEffectiveShift = createEffectiveShift

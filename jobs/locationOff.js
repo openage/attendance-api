@@ -37,7 +37,7 @@ exports.schedule = () => {
                 start(shiftType, `* * ${shiftStart}-${shiftEnd}/1 * * *`)
             })
                 .then(() => {
-                // console.log('missSwipe job has been scheduled');
+                    // console.log('missSwipe job has been scheduled');
                     logger.info(`location off job has been scheduled ${Date()}`)
                 })
         ).catch(err => {

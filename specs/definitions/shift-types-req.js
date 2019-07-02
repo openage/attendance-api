@@ -1,4 +1,3 @@
-
 module.exports = [{
     name: 'shiftTypesReq',
     properties: {
@@ -17,6 +16,28 @@ module.exports = [{
         'endTime': {
             'type': 'string'
         },
+        'grace': {
+            'checkIn': {
+                'early': {
+                    'type': 'number'
+                },
+                'late': {
+                    'type': 'number'
+                }
+            },
+            'checkOut': {
+                'early': {
+                    'type': 'number'
+                },
+                'late': {
+                    'type': 'number'
+                }
+            }
+        },
+        'breakTime': {
+            'type': 'number'
+        },
+
         'monday': {
             'type': 'string'
         },

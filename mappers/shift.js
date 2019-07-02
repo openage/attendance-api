@@ -14,7 +14,10 @@ exports.toModel = entity => {
                 name: entity.shiftType.name,
                 code: entity.shiftType.code,
                 startTime: entity.shiftType.startTime,
-                endTime: entity.shiftType.endTime
+                endTime: entity.shiftType.endTime,
+                breakTime: entity.shiftType.breakTime,
+                color: entity.shiftType.color || '#000000',
+                isDynamic: entity.shiftType.isDynamic
             }
         } else {
             model.shiftType = {

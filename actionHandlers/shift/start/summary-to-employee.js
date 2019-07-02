@@ -94,7 +94,7 @@ exports.process = (data, alert, context) => {
                     }
 
                     let summary = []
-                    let missSwipeCount = 0
+                    // let missSwipeCount = 0
                     let leavesCount = 0
                     let absentCount = 0
 
@@ -107,10 +107,10 @@ exports.process = (data, alert, context) => {
                         }
 
                         if (!attendance.shift.status) {
-                            if (attendance.status === 'missSwipe') {
-                                ++missSwipeCount
-                                return
-                            }
+                            // if (attendance.status === 'missSwipe') {
+                            //     ++missSwipeCount
+                            //     return
+                            // }
 
                             if (attendance.status === 'onLeave') {
                                 ++leavesCount
@@ -133,7 +133,7 @@ exports.process = (data, alert, context) => {
                     })
 
                     let stats = {
-                        missSwipeCount: missSwipeCount,
+                        // missSwipeCount: missSwipeCount,
                         leavesCount: leavesCount,
                         absentCount: absentCount,
                         weekStart: weekStart,
@@ -173,7 +173,7 @@ exports.process = (data, alert, context) => {
                     hoursWorked: summaryData.weekSummary ? Math.trunc(summaryData.weekSummary.hoursWorked) : 0,
                     minsWorked: summaryData.weekSummary ? Math.trunc((summaryData.weekSummary.hoursWorked % 1) * 60) : 0,
                     leaveTaken: summaryData.stats.leavesCount || 0,
-                    missSwipeCount: summaryData.stats.missSwipeCount || 0,
+                    // missSwipeCount: summaryData.stats.missSwipeCount || 0,
                     absentCount: summaryData.stats.absentCount || 0,
                     summary: summaryData.summary
                 },

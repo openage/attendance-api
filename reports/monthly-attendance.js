@@ -1,5 +1,6 @@
 'use strict'
 const moment = require('moment')
+const _ = require('underscore')
 const logger = require('@open-age/logger')('reports')
 const formatter = require('../formatters/monthly-attendance-report')
 const db = require('../models')
@@ -14,13 +15,13 @@ module.exports = async (params, context) => {
 
     let attendances = []
 
-    let ofDate = params.from
+    let ofDate = params.dates && params.dates.from ? params.dates.from : new Date()
 
     let getExtraHours = {
         byShiftEnd: false,
         byShiftLength: false
     }
-
+    let tagIds = []
     let fromDate = ofDate ? moment(ofDate).startOf('month') : moment().startOf('month')
 
     let toDate = ofDate ? moment(ofDate).endOf('month') : moment().endOf('month')
@@ -33,38 +34,87 @@ module.exports = async (params, context) => {
         downloaderEmail: context.employee.email,
         downloaderPhone: context.employee.phone
     }
+    if (params.employee) {
+        if (params.employee.name) {
+            query.name = {
+                $regex: params.employee.name,
+                $options: 'i'
+            }
+        }
 
-    if (params.name) {
-        query.name = {
-            $regex: params.name,
-            $options: 'i'
+        if (params.employee.code) {
+            query.code = {
+                $regex: params.employee.code,
+                $options: 'i'
+            }
+        }
+
+        if (params.employee.supervisor) {
+            query.supervisor = global.toObjectId(params.employee.supervisor.id)
+        }
+        if (params.employee.userTypes) {
+            _.each(params.employee.userTypes, (userType) => {
+                tagIds.push(global.toObjectId(userType.id))
+            })
+        }
+
+        if (params.employee.contractors) {
+            let queryContractorsList = params.employee.contractors
+            _.each(queryContractorsList, (contractor) => {
+                tagIds.push(global.toObjectId(contractor.id))
+            })
+        }
+        if (tagIds.length) {
+            query['tags'] = {
+                $in: tagIds
+            }
+        }
+
+        if (params.employee.divisions) {
+            let divisionList = []
+            let queryDivisionList = params.employee.divisions
+            _.each(queryDivisionList, (division) => {
+                divisionList.push(division.name.toLowerCase())
+            })
+            query['division'] = {
+                $in: divisionList
+            }
+        }
+
+        if (params.employee.departments) {
+            let departmentList = []
+            let queryDepartmentList = params.employee.departments
+            _.each(queryDepartmentList, (department) => {
+                departmentList.push(department.name.toLowerCase())
+            })
+            query['department'] = {
+                $in: departmentList
+            }
+        }
+        if (params.employee.designations) {
+            let designationList = []
+            let queryDesignationList = params.employee.designations
+            _.each(queryDesignationList, (designation) => {
+                designationList.push(designation.name.toLowerCase())
+            })
+            query['designation'] = {
+                $in: designationList
+            }
+        }
+
+        if (params.employee.contractors) {
+            let contractorList = []
+            let queryContractorsList = params.employee.contractors
+            _.each(queryContractorsList, (contractor) => {
+                contractorList.push(contractor.name.toLowerCase())
+            })
+            query['contractor'] = {
+                $in: contractorList
+            }
         }
     }
-
-    if (params.tagIds && params.tagIds.length) {
-        let tagIds = []
-        let queryTags = params.tagIds.split(',')
-        Promise.each(queryTags, (tagId) => {
-            tagIds.push(global.toObjectId(tagId))
-        })
-        query.tags = {
-            $in: tagIds
-        }
-    }
-
-    if (params.code) {
-        query.code = {
-            $regex: params.code,
-            $options: 'i'
-        }
-    }
-
-    if (params.supervisor) {
-        query.supervisor = global.toObjectId(params.supervisor)
-    }
-
     if (params.shiftType) {
-        query.shiftType = global.toObjectId(params.shiftType)
+        query.shiftType = global.toObjectId(params.shiftType.id)
     }
 
     let employees = await db.employee.aggregate([{

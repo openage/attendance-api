@@ -3,10 +3,11 @@ const moment = require('moment')
 const appRoot = require('app-root-path')
 const join = require('path').join
 const mapper = require('../mappers/timeLog')
-const logger = require('@open-age/logger')('api.timeLogs')
 const offline = require('@open-age/offline-processor')
 const timeLogs = require('../services/time-logs')
+const attendanceService = require('../services/attendances')
 const db = require('../models')
+const dates = require('../helpers/dates')
 
 const getIpAddress = (req) => {
     if (req.headers['x-forwarded-for']) {
@@ -22,12 +23,19 @@ exports.downloadSyncSheet = (req, res) => {
     let fileName = req.params.filename
     res.download(`${join(appRoot.path, `/temp/${fileName}`)}`, fileName)
 }
-exports.bulk = async (req) => {
+const bulk = async (req) => {
     for (const item of req.body.items) {
+        req.context.logger.debug(item)
+        req.context.logger.debug(item.employee)
+
         await timeLogs.create(item, req.context)
     }
+    return `added '${req.body.items.length}' time logs`
+}
 
-    return `added '${req.body.items.length}' logs`
+exports.move = async (req) => {
+    await attendanceService.moveTimeLog(req.body.timeLog, req.body.from, req.body.to, req.context)
+    return `moved`
 }
 
 exports.create = async (req, res) => {
@@ -52,6 +60,10 @@ exports.create = async (req, res) => {
         employeeId = req.body.employee.id
     }
 
+    if (!model.time) {
+        return res.failure('time is required')
+    }
+
     model.employee = {
         id: employeeId
     }
@@ -61,9 +73,15 @@ exports.create = async (req, res) => {
     req.context.processSync = true
     let timeLog = await timeLogs.create(model, req.context)
 
-    timeLog.attendance = db.attendance.findOne({
-        recentMostTimeLog: timeLog
-    })
+    timeLog.attendance = attendanceService.get(timeLog.attendanceId)
+    return mapper.toModel(timeLog)
+}
+
+exports.update = async (req) => {
+    let id = req.params.id
+    req.context.processSync = true
+    let timeLog = await timeLogs.update(id, req.body, req.context)
+
     return mapper.toModel(timeLog)
 }
 
@@ -102,3 +120,21 @@ exports.search = (req, res) => {
             res.failure(err)
         })
 }
+
+exports.regenerate = async (req) => {
+    let from = dates.date(req.query.date || req.body.date).bod()
+    let till = dates.date(req.query.date || req.body.date).eod()
+
+    let entity = {
+        from: from,
+        till: till
+    }
+
+    await offline.queue('regenerate', 'time-log', entity, req.context)
+
+    return {
+        message: 'submitted'
+    }
+}
+
+exports.bulk = bulk

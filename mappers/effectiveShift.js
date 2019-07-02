@@ -17,6 +17,7 @@ exports.toEmployeeModel = entity => {
             id: entity._id.toString(),
             name: entity.name,
             code: entity.code,
+            biometricCode: entity.biometricCode,
             picUrl: entity.picUrl,
             isDynamicShift: entity.isDynamicShift || false,
             weeklyOff: {
@@ -29,7 +30,7 @@ exports.toEmployeeModel = entity => {
 
     if (entity.previousShift) {
         model.previousShift = {
-            date: entity.previousShift.date,
+            date: new Date(),
             id: entity.previousShift.id,
             shiftType: {}
         }
@@ -38,6 +39,7 @@ exports.toEmployeeModel = entity => {
             model.previousShift.shiftType = {
                 id: entity.previousShift.shiftType.id.toString(),
                 name: entity.previousShift.shiftType.name,
+                color: entity.previousShift.shiftType.color,
                 startTime: entity.previousShift.shiftType.startTime,
                 endTime: entity.previousShift.shiftType.endTime
             }
@@ -87,6 +89,10 @@ exports.toSearchModel = entities => {
                 id: entity._id.toString(),
                 name: entity.name,
                 code: entity.code,
+                designation: entity.designation,
+                department: entity.department,
+                division: entity.division,
+                biometricCode: entity.biometricCode,
                 picUrl: entity.picUrl,
                 isDynamicShift: entity.isDynamicShift || false,
                 weeklyOff: {
@@ -101,7 +107,7 @@ exports.toSearchModel = entities => {
 
         if (entity.previousShift) {
             model.previousShift = {
-                date: entity.previousShift.date,
+                date: entity.previousShift.date || new Date(),
                 id: entity.previousShift.id,
                 shiftType: {}
             }
@@ -110,6 +116,9 @@ exports.toSearchModel = entities => {
                 model.previousShift.shiftType = {
                     id: entity.previousShift.shiftType.id.toString(),
                     name: entity.previousShift.shiftType.name,
+                    color: entity.previousShift.shiftType.color,
+                    startTime: entity.previousShift.shiftType.startTime,
+                    endTime: entity.previousShift.shiftType.endTime,
                     monday: entity.previousShift.shiftType.monday,
                     tuesday: entity.previousShift.shiftType.tuesday,
                     wednesday: entity.previousShift.shiftType.wednesday,
@@ -142,6 +151,9 @@ exports.toSearchModel = entities => {
                     shiftType: {
                         id: effectiveShift.shiftType.id.toString(),
                         name: effectiveShift.shiftType.name,
+                        code: effectiveShift.shiftType.code,
+                        color: effectiveShift.shiftType.color || '#000000',
+                        isDynamic: effectiveShift.shiftType.isDynamic,
                         monday: effectiveShift.shiftType.monday,
                         tuesday: effectiveShift.shiftType.tuesday,
                         wednesday: effectiveShift.shiftType.wednesday,
@@ -158,7 +170,7 @@ exports.toSearchModel = entities => {
         if (entity.attendances) {
             entity.attendances.forEach((attendance) => {
                 model.attendances.push({
-                    id: attendance._id.toString(),
+                    id: attendance && attendance._id.toString(),
                     status: attendance.status,
                     checkIn: attendance.checkIn,
                     checkOut: attendance.checkOut,
@@ -166,14 +178,17 @@ exports.toSearchModel = entities => {
                     ofDate: attendance.ofDate,
                     hoursWorked: attendance.hoursWorked || 0,
                     minsWorked: attendance.minsWorked || 0,
+                    count: attendance.count || 0,
+                    comment: attendance.comment,
+                    isContinue: attendance.isContinue || false,
                     shift: {
-                        id: attendance.shift.id,
-                        date: attendance.shift.date,
-                        status: attendance.shift.status,
+                        id: attendance.shift && attendance.shift.id,
+                        date: attendance.shift && attendance.shift.date,
+                        status: attendance.shift && attendance.shift.status,
                         shiftType: {
-                            id: attendance.shift.shiftType.id,
-                            name: attendance.shift.shiftType.name,
-                            code: attendance.shift.shiftType.code
+                            id: attendance.shift.shiftType && attendance.shift.shiftType.id,
+                            name: attendance.shift.shiftType && attendance.shift.shiftType.name,
+                            code: attendance.shift.shiftType && attendance.shift.shiftType.code
                         }
                     }
                 })

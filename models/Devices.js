@@ -9,7 +9,7 @@ var device = new mongoose.Schema({
     port: String,
     type: {
         type: String,
-        enum: ['in', 'out', 'master', 'both']
+        enum: ['in', 'out', 'master', 'both', 'parse']
     },
     location: {
         coordinates: {
@@ -29,7 +29,17 @@ var device = new mongoose.Schema({
     prefix: { type: String, default: '0' }, // for bimetrics
     organization: { type: mongoose.Schema.Types.ObjectId, ref: 'organization' },
     category: { type: mongoose.Schema.Types.ObjectId, ref: 'category' },
-    machine: { type: mongoose.Schema.Types.ObjectId, ref: 'machine' }
+    machine: { type: mongoose.Schema.Types.ObjectId, ref: 'machine' },
+
+    status: String,
+    lastSeen: { type: Date },
+    created_At: { type: Date, default: Date.now },
+    timeStamp: { type: Date, default: Date.now }
+})
+
+device.pre('save', function (next) {
+    this.timeStamp = Date.now()
+    next()
 })
 
 device.plugin(findOrCreate)

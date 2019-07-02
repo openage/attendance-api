@@ -24,7 +24,7 @@ const isEarly = (attendance, limit) => {
     return shiftEndTime.diff(shiftCheckOut, 'minutes') > limit
 }
 
-exports.process = async (data, alert, context) => {
+exports.process = async (attendance, alert, context) => {
     logger.debug('early going alert has been triggered')
     let consecutive = true
     let threshold = 5
@@ -46,89 +46,87 @@ exports.process = async (data, alert, context) => {
         }
     }
 
-    return db.attendance.findById(data.id).populate('employee').then(attendance => {
-        return db.attendance.find({
-            employee: attendance.employee.id,
-            checkOut: {
-                $exists: true,
-                $gte: moment().subtract(inLastDays, 'days').toDate()
-            }
-        }).populate({
-            path: 'shift',
-            populate: {
-                path: 'shiftType'
-            }
-        }).then(async (attendances) => {
-            if (!attendances || !attendances.length) {
-                return null
-            }
-
-            let earlyAttendances = attendances.filter(item => {
-                return isEarly(item, earlyByMinutes)
-            }).sort((a, b) => {
-                return a.shift.date - b.shift.date
-            })
-
-            if (earlyAttendances.length < threshold) {
-                return null
-            }
-
-            if (!consecutive) {
-                await insights.supervisorStats(alert, attendance.employee.id, 'noOfMin')
-                return communications.send({
-                    employee: attendance.employee,
-                    level: supervisorLevel
-                }, {
-                    actions: [],
-                    entity: entities.toEntity(attendance, 'attendance'),
-                    data: {
-                        checkOut: attendance.checkOut,
-                        count: earlyAttendances.length,
-                        minutes: earlyByMinutes,
-                        days: inLastDays,
-                        name: attendance.employee.name || attendance.employee.code
-                    },
-                    template: 'regularly-going-early'
-                }, channels, context)
-            }
-
-            let consecutiveCount = 0
-            let last = null
-
-            earlyAttendances.forEach(item => {
-                if (!last) {
-                    last = item
-                    return
-                }
-
-                if (moment(last.shift.date).diff(moment(moment(last.shift.date)), 'days') < 2) {
-                    consecutiveCount++
-                } else {
-                    consecutiveCount = 0
-                }
-                last = item
-            })
-
-            if (consecutiveCount < threshold) {
-                return null
-            }
-            await insights.supervisorStats(alert, attendance.employee, 'inARow')
-            return communications.send({
-                employee: attendance.employee,
-                level: supervisorLevel
-            }, {
-                actions: [],
-                entity: entities.toEntity(attendance, 'attendance'),
-                data: {
-                    checkOut: attendance.checkOut,
-                    name: attendance.employee.name || attendance.employee.code,
-                    times: consecutiveCount,
-                    days: inLastDays,
-                    count: earlyAttendances.length,
-                    minutes: earlyByMinutes
-                },
-                template: 'consecutively-going-early'
-            }, channels, context)
-        })
+    let attendances = await db.attendance.find({
+        employee: attendance.employee.id,
+        checkOut: {
+            $exists: true,
+            $gte: moment().subtract(inLastDays, 'days').toDate()
+        }
+    }).populate({
+        path: 'shift',
+        populate: {
+            path: 'shiftType'
+        }
     })
+
+    if (!attendances || !attendances.length) {
+        return null
+    }
+
+    let earlyAttendances = attendances.filter(item => {
+        return isEarly(item, earlyByMinutes)
+    }).sort((a, b) => {
+        return a.shift.date - b.shift.date
+    })
+
+    if (earlyAttendances.length < threshold) {
+        return null
+    }
+
+    if (!consecutive) {
+        await insights.supervisorStats(alert, attendance.employee.id, 'noOfMin')
+        return communications.send({
+            employee: attendance.employee,
+            level: supervisorLevel
+        }, {
+            actions: [],
+            entity: entities.toEntity(attendance, 'attendance'),
+            data: {
+                checkOut: attendance.checkOut,
+                count: earlyAttendances.length,
+                minutes: earlyByMinutes,
+                days: inLastDays,
+                name: attendance.employee.name || attendance.employee.code
+            },
+            template: 'regularly-going-early'
+        }, channels, context)
+    }
+
+    let consecutiveCount = 0
+    let last = null
+
+    earlyAttendances.forEach(item => {
+        if (!last) {
+            last = item
+            return
+        }
+
+        if (moment(last.shift.date).diff(moment(moment(last.shift.date)), 'days') < 2) {
+            consecutiveCount++
+        } else {
+            consecutiveCount = 0
+        }
+        last = item
+    })
+
+    if (consecutiveCount < threshold) {
+        return
+    }
+    await insights.supervisorStats(alert, attendance.employee, 'inARow')
+    return communications.send({
+        employee: attendance.employee,
+        level: supervisorLevel
+    }, {
+        actions: [],
+        entity: entities.toEntity(attendance, 'attendance'),
+        data: {
+            checkOut: attendance.checkOut,
+            name: attendance.employee.name || attendance.employee.code,
+            times: consecutiveCount,
+            days: inLastDays,
+            count: earlyAttendances.length,
+            minutes: earlyByMinutes
+        },
+        template: 'consecutively-going-early'
+    }, channels, context)
 }

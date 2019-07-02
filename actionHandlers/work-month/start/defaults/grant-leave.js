@@ -1,15 +1,13 @@
-const leaveTypes = require('../../../../services/leave-types')
+const leaveBalanceService = require('../../../../services/leave-balances')
 const db = require('../../../../models')
+const moment = require('moment')
 
 exports.process = async (data, context) => {
-    let items = await db.leaveTypes.find({
-        'periodicity.type': 'monthly',
-        'organization': context.organization
-    })
-
-    for (const item of items) {
-        let log = context.logger.start()
-        await leaveTypes.grant(item, context)
-        log.end()
-    }
+    await leaveBalanceService.runPeriodRule({
+        type: 'monthly',
+        value: 'start'
+    }, {
+        type: 'month',
+        id: moment(data.date).format('MM-YYYY')
+    }, context)
 }

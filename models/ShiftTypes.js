@@ -8,7 +8,44 @@ var shiftType = new mongoose.Schema({
     unitsPerDay: Number,
     startTime: Date,
     endTime: Date,
-    organization: { type: mongoose.Schema.Types.ObjectId, ref: 'organization' },
+    isDynamic: Boolean,
+    autoExtend: Boolean, // minutes
+    color: { type: String, default: '#000000' },
+    grace: {
+        checkIn: {
+            early: {
+                type: Number, // in minutes,
+                default: 0,
+                min: 0
+            },
+            late: {
+                type: Number, // in minutes,
+                default: 0,
+                min: 0
+            }
+        },
+        checkOut: {
+            early: {
+                type: Number, // in minutes,
+                default: 0,
+                min: 0
+            },
+            late: {
+                type: Number, // in minutes,
+                default: 0,
+                min: 0
+            }
+        }
+    },
+    breakTime: Number,
+    department: {
+        type: String,
+        default: ''
+    },
+    organization: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'organization'
+    },
     monday: {
         type: String,
         enum: ['off', 'full', 'half', 'alternate']
@@ -37,7 +74,10 @@ var shiftType = new mongoose.Schema({
         type: String,
         enum: ['off', 'full', 'half', 'alternate']
     },
-    status: String
+    status: String,
+
+    created_At: { type: Date, default: Date.now },
+    timeStamp: { type: Date, default: Date.now }
 })
 
 shiftType.pre('save', function (next) {
