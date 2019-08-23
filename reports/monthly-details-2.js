@@ -1,6 +1,5 @@
 'use strict'
 const moment = require('moment')
-const _ = require('underscore')
 const formatter = require('../formatters/monthly-details-2')
 // const formatter = require('../formatters/detail-attendance-report')
 const db = require('../models')

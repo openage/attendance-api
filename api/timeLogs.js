@@ -40,13 +40,13 @@ exports.move = async (req) => {
 
 exports.create = async (req, res) => {
     let model = req.body
-    let employeeId = req.employee.id
+    let employeeId = req.context.user.id
 
     if (!model.source) {
         return res.failure('source is required')
     }
 
-    if (!req.employee.abilities.maualAttendance &&
+    if (!req.context.user.abilities.maualAttendance &&
         !model.device &&
         model.source !== 'byAdmin') {
         return res.failure('device is required')
@@ -74,7 +74,7 @@ exports.create = async (req, res) => {
     let timeLog = await timeLogs.create(model, req.context)
 
     timeLog.attendance = attendanceService.get(timeLog.attendanceId)
-    return mapper.toModel(timeLog)
+    return mapper.toModel(timeLog, req.context)
 }
 
 exports.update = async (req) => {
@@ -82,11 +82,11 @@ exports.update = async (req) => {
     req.context.processSync = true
     let timeLog = await timeLogs.update(id, req.body, req.context)
 
-    return mapper.toModel(timeLog)
+    return mapper.toModel(timeLog, req.context)
 }
 
 exports.search = (req, res) => {
-    let employee = req.employee
+    let employee = req.context.user
     let toDate
     let fromDate
     let query = {
@@ -115,7 +115,7 @@ exports.search = (req, res) => {
             time: 1
         })
         .then(timeLogs => {
-            res.page(mapper.toSearchModel(timeLogs))
+            res.page(mapper.toSearchModel(timeLogs, req.context))
         }).catch(err => {
             res.failure(err)
         })

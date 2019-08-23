@@ -1,7 +1,5 @@
 'use strict'
 const moment = require('moment')
-const _ = require('underscore')
-const logger = require('@open-age/logger')('reports')
 const formatter = require('../formatters/monthly-attendance-report')
 const db = require('../models')
 
@@ -21,7 +19,6 @@ module.exports = async (params, context) => {
         byShiftEnd: false,
         byShiftLength: false
     }
-    let tagIds = []
     let fromDate = ofDate ? moment(ofDate).startOf('month') : moment().startOf('month')
 
     let toDate = ofDate ? moment(ofDate).endOf('month') : moment().endOf('month')
@@ -52,64 +49,27 @@ module.exports = async (params, context) => {
         if (params.employee.supervisor) {
             query.supervisor = global.toObjectId(params.employee.supervisor.id)
         }
-        if (params.employee.userTypes) {
-            _.each(params.employee.userTypes, (userType) => {
-                tagIds.push(global.toObjectId(userType.id))
-            })
-        }
-
-        if (params.employee.contractors) {
-            let queryContractorsList = params.employee.contractors
-            _.each(queryContractorsList, (contractor) => {
-                tagIds.push(global.toObjectId(contractor.id))
-            })
-        }
-        if (tagIds.length) {
-            query['tags'] = {
-                $in: tagIds
-            }
-        }
 
         if (params.employee.divisions) {
-            let divisionList = []
-            let queryDivisionList = params.employee.divisions
-            _.each(queryDivisionList, (division) => {
-                divisionList.push(division.name.toLowerCase())
-            })
             query['division'] = {
-                $in: divisionList
+                $in: params.employee.divisions.map(i => i.name)
             }
         }
 
         if (params.employee.departments) {
-            let departmentList = []
-            let queryDepartmentList = params.employee.departments
-            _.each(queryDepartmentList, (department) => {
-                departmentList.push(department.name.toLowerCase())
-            })
             query['department'] = {
-                $in: departmentList
+                $in: params.employee.departments.map(i => i.name)
             }
         }
         if (params.employee.designations) {
-            let designationList = []
-            let queryDesignationList = params.employee.designations
-            _.each(queryDesignationList, (designation) => {
-                designationList.push(designation.name.toLowerCase())
-            })
             query['designation'] = {
-                $in: designationList
+                $in: params.employee.designations.map(i => i.name)
             }
         }
 
         if (params.employee.contractors) {
-            let contractorList = []
-            let queryContractorsList = params.employee.contractors
-            _.each(queryContractorsList, (contractor) => {
-                contractorList.push(contractor.name.toLowerCase())
-            })
             query['contractor'] = {
-                $in: contractorList
+                $in: params.employee.contractors.map(i => i.name)
             }
         }
     }
@@ -130,6 +90,7 @@ module.exports = async (params, context) => {
     employees = employees.sort((a, b) => {
         return a.code - b.code
     })
+
     await Promise.each(employees, async (employee) => {
         await Promise.all([
             db.leave.find({
@@ -162,8 +123,6 @@ module.exports = async (params, context) => {
                 })
             })
     })
-
-    const report = await formatter.build(fileName, ofDate, getExtraHours, attendances, orgDetails)
 
     return Promise.resolve({
         fileName: fileName

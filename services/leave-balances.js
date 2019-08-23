@@ -321,3 +321,31 @@ exports.runPeriodRule = async (periodicity, entity, context) => {
         log.end()
     }
 }
+
+exports.search = async (query, pageInput, context) => {
+    let employees = await employeeService.search(query, pageInput, context)
+    let leaveTypes = await db.leaveType.find({
+        organization: context.organization
+    })
+
+    let entities = []
+    for (const employee of employees) {
+        employee.leaveBalances = await exports.getByEmployee(employee, {
+            leaveTypes: leaveTypes
+        }, context)
+
+        entities.push(employee)
+    }
+
+    let page = {
+        items: entities
+    }
+
+    if (pageInput) {
+        page.count = await employeeService.count(query, context)
+        page.pageNo = pageInput.pageNo
+        page.limit = pageInput.limit
+    }
+
+    return page
+}

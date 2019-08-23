@@ -6,7 +6,7 @@ const providerConfig = require('config').get('providers')
 const moment = require('moment')
 
 exports.process = async (syncConfigurations, context) => {
-    syncConfigurations.type = { providerName: 'ems' }
+    syncConfigurations.type = { providerName: 'directory' }
 
     syncConfigurations.config.lastSyncDate = context.organization.lastSyncDate ? context.organization.lastSyncDate : moment(context.organization.created_At)
 

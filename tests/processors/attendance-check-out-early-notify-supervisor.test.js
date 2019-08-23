@@ -7,7 +7,7 @@ require('sinon-mongoose');
 let testData = require('../testData');
 
 describe('attendance-check-out-early-notify-supervisor processor', function () {
-    let processor = require('../../actionHandlers/attendance/check-out/going-early-notify-supervisor');
+    let processor = require('../../actionHandlers/attendance/check-out/defaults/left-early');
     let data = {
         id: "597f2d319f2c5e1cd33ffc7e"
     };

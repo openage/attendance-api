@@ -1,6 +1,5 @@
 'use strict'
 
-const logger = require('@open-age/logger')('services/tasks')
 const db = require('../models')
 
 const set = (model, entity, context) => {
@@ -14,7 +13,7 @@ const set = (model, entity, context) => {
 }
 
 const create = async (model, context) => {
-    const log = logger.start('create')
+    context.logger.start('create')
 
     var task = new db.task({
         data: model.data,
@@ -51,7 +50,7 @@ const get = async (query, context) => {
 }
 
 const search = async (query, context) => {
-    const log = logger.start('query')
+    context.logger.silly('query')
     query.organization = context.organization
 
     const items = await db.task.find(query)
@@ -60,7 +59,7 @@ const search = async (query, context) => {
 }
 
 const update = async (id, model, context) => {
-    const log = logger.start('update')
+    context.logger.silly('update')
 
     let entity = await db.task.findById(id)
     set(model, entity, context)

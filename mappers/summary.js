@@ -1,10 +1,9 @@
 'use strict'
-let _ = require('underscore')
+
 var moment = require('moment')
-var async = require('async')
 var timeLogMapper = require('./timeLog')
 
-exports.toModel = (months, weeks, currentWeek, today) => {
+exports.toModel = (months, weeks, currentWeek, today, context) => {
     var model = {}
     model.today = {}
     model.currentWeek = {}
@@ -59,7 +58,7 @@ exports.toModel = (months, weeks, currentWeek, today) => {
         model.currentWeek.avgHours = count === 0 ? 0 : currentWeek.hoursWorked / count
     }
 
-    if (!_.isEmpty(weeks)) {
+    if (weeks && weeks.length) {
         let totalWeekHours = 0
         let totalPresentDays = 0
         model.currentMonth.weeks = []
@@ -107,7 +106,7 @@ exports.toModel = (months, weeks, currentWeek, today) => {
         model.currentMonth.avgHours = totalWeekHours === 0 ? 0 : totalWeekHours / totalPresentDays
     }
 
-    if (!_.isEmpty(months)) {
+    if (months && months.length) {
         let totalMonthHours = 0
         let totalWorkingDays = 0
         model.currentYear.months = []
@@ -127,15 +126,15 @@ exports.toModel = (months, weeks, currentWeek, today) => {
     return model
 }
 
-exports.toSearchModel = (entities) => {
+exports.toSearchModel = (entities, context) => {
     return entities.map(entity => {
-        return exports.toModel(entity)
+        return exports.toModel(entity, context)
     })
 }
 
-exports.toTeamSummary = entities => {
+exports.toTeamSummary = (entities, context) => {
     return entities.map(entity => {
-        // return exports.toModel(entity.tillCurrentYear, entity.tillCurrentMonth, entity.tillCurrentWeek, entity.today);
+        // return exports.toModel(entity.tillCurrentYear, entity.tillCurrentMonth, entity.tillCurrentWeek, entity.today, context);
         var model = {
             id: entity.employee.id,
             name: entity.employee.name,
@@ -147,13 +146,13 @@ exports.toTeamSummary = entities => {
             phone: entity.employee.phone
         }
 
-        var data = exports.toModel(entity.tillCurrentYear, entity.tillCurrentMonth, entity.tillCurrentWeek, entity.today)
+        var data = exports.toModel(entity.tillCurrentYear, entity.tillCurrentMonth, entity.tillCurrentWeek, entity.today, context)
         model.attendance = data
         return model
     })
 }
 
-exports.monthlySummary = entity => {
+exports.monthlySummary = (entity, context) => {
     var model = {
         id: entity._id.toString(),
         name: entity.employeeModel.name,
@@ -197,7 +196,7 @@ exports.monthlySummary = entity => {
     return model
 }
 
-exports.logs = entities => {
+exports.logs = (entities, context) => {
     return entities.map(entity => {
         var model = {
 
@@ -252,14 +251,14 @@ exports.logs = entities => {
         model.timeLogs = []
         if (entity.timeLogs && entity.timeLogs.length) {
             entity.timeLogs.forEach(item => {
-                model.timeLogs.push(timeLogMapper.toModel(item))
+                model.timeLogs.push(timeLogMapper.toModel(item, context))
             })
         }
         return model
     })
 }
 
-exports.toPdfModel = entity => {
+exports.toPdfModel = (entity, context) => {
     var model = {
         code: entity.code,
         name: entity.name,
@@ -275,7 +274,7 @@ exports.toPdfModel = entity => {
     var attendances = []
     if (entity.attendances) {
         var oneDayAttendance = {}
-        _.each(entity.attendances, attendance => {
+        entity.attendances.forEach(attendance => {
             oneDayAttendance = {
                 checkIn: attendance.checkIn ? moment(attendance.checkIn).format('H:mm') : '',
                 checkOut: attendance.checkOut ? moment(attendance.checkOut).format('H:mm') : '',

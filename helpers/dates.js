@@ -255,6 +255,13 @@ exports.date = (date1) => {
         isToday: () => {
             return moment(date1).startOf('day').isSame(moment(new Date()).startOf('day'))
         },
+
+        isPast: () => {
+            return moment(date1).startOf('day').isBefore(moment(new Date()).startOf('day'))
+        },
+        isFuture: () => {
+            return moment(date1).startOf('day').isAfter(moment(new Date()).startOf('day'))
+        },
         isBetween: (from, till) => {
             return moment(date1).isBetween(moment(from), moment(till), 'day', '[]')
         },

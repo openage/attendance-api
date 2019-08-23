@@ -39,17 +39,6 @@ module.exports = async (params, context) => {
         }
     }
 
-    if (params.tagIds && params.tagIds.length) {
-        let tagIds = []
-        let queryTags = params.tagIds.split(',')
-        Promise.each(queryTags, (tagId) => {
-            tagIds.push(global.toObjectId(tagId))
-        })
-        query['emp.tags'] = {
-            $in: tagIds
-        }
-    }
-
     if (params.supervisor) {
         query.supervisor = global.toObjectId(params.supervisor)
     }

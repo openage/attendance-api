@@ -1,4 +1,3 @@
-const _ = require('underscore')
 const moment = require('moment')
 const reports = require('../helpers/reports')
 const excelBuilder = require('msexcel-builder')
@@ -13,9 +12,9 @@ const buildHeader = (sheet1, date, context) => {
         col: 1,
         row: 1
     }, {
-            col: 38,
-            row: 2
-        })
+        col: 38,
+        row: 2
+    })
     sheet1.width(1, 10)
     sheet1.font(1, 1, {
         bold: 'true',
@@ -51,9 +50,9 @@ const setColumnHeader = (sheet1, titleColumn, text, width, vertical) => {
         col: titleColumn,
         row: 6
     }, {
-            col: titleColumn,
-            row: 7
-        })
+        col: titleColumn,
+        row: 7
+    })
     sheet1.width(titleColumn, width)
     sheet1.font(titleColumn, 6, {
         sz: '10'
@@ -80,9 +79,9 @@ const setDayHeader = (sheet1, titleColumn, day) => {
         col: titleColumn,
         row: 6
     }, {
-            col: titleColumn + 1,
-            row: 6
-        })
+        col: titleColumn + 1,
+        row: 6
+    })
     sheet1.width(titleColumn, 8.0)
     sheet1.font(titleColumn, 6, {
         sz: '10'
@@ -262,46 +261,64 @@ exports.build = async (fileName, ofDate, monthlySummaryIds, context) => {
 
             let attendance = data.attendances.find(a => a.ofDate.getDate() === item.day)
             if (attendance) {
-                firstHalf = attendance.firstHalfStatus ? (presentCodes.indexOf(attendance.firstHalfStatus.toUpperCase()) !== -1 ? presentDisplay : attendance.firstHalfStatus) : ''
-                if ((attendance.status === 'onLeave' && (attendance.shift.status === 'working' || firstHalf.toLowerCase() === 'el')) && firstHalf !== 'P') {
-                    firstHalf = leaveCodes.indexOf(attendance.firstHalfStatus.toUpperCase()) !== -1 ? leaveDisplay : attendance.firstHalfStatus
-                }
-                if (attendance.shift.status === 'holiday' || attendance.status === 'weekOff' || attendance.shift.status === 'weekOff') {
-                    firstHalf = 'WO'
-                    notWorkedDays++
-                }
-                if (attendance.firstHalfStatus && attendance.firstHalfStatus.toUpperCase() === 'A' && attendance.status !== 'weekOff') {
-                    firstHalf = absentCodes.indexOf(attendance.firstHalfStatus.toUpperCase()) !== -1 ? absentDisplay : attendance.firstHalfStatus
-                }
-                if (firstHalf === presentDisplay) {
-                    workedDays++
-                } else if (firstHalf === absentDisplay) {
-                    absentDays++
-                }
-                secondHalf = attendance.secondHalfStatus ? (presentCodes.indexOf(attendance.secondHalfStatus.toUpperCase()) !== -1 ? presentDisplay : attendance.secondHalfStatus) : ''
-                if ((attendance.status === 'onLeave' && (attendance.shift.status === 'working' || secondHalf.toLowerCase() === 'el')) && secondHalf !== 'P') {
-                    secondHalf = leaveCodes.indexOf(attendance.secondHalfStatus.toUpperCase()) !== -1 ? leaveDisplay : attendance.secondHalfStatus
-                }
-                if (attendance.shift.status === 'holiday' || attendance.status === 'holiday' || attendance.status === 'weekOff' || attendance.shift.status === 'weekOff') {
-                    secondHalf = 'WO'
-                    notWorkedDays++
-                }
-                if (attendance.secondHalfStatus && attendance.secondHalfStatus.toUpperCase() === 'A' && attendance.status !== 'weekOff') {
-                    secondHalf = absentCodes.indexOf(attendance.secondHalfStatus.toUpperCase()) !== -1 ? absentDisplay : attendance.secondHalfStatus
-                }
-                if (secondHalf === presentDisplay) {
-                    workedDays++
-                } else if (secondHalf === absentDisplay) {
-                    absentDays++
-                }
-                if (firstHalf === 'P') {
-                    if (firstHalf !== attendance.firstHalfStatus) {
-                        firstHalf = `${firstHalf}.`
+
+                var today = new Date()
+                var currentDate = new Date(today.toDateString())
+                var attendanceDate = new Date(attendance.ofDate.toDateString())
+                if (!(attendanceDate > currentDate && attendance.status != 'onLeave')) {
+                    firstHalf = attendance.firstHalfStatus ? (presentCodes.indexOf(attendance.firstHalfStatus.toUpperCase()) !== -1 ? presentDisplay : attendance.firstHalfStatus) : ''
+                    if ((attendance.status === 'onLeave' && (attendance.shift.status === 'working' || firstHalf.toLowerCase() === 'el')) && firstHalf !== 'P') {
+                        firstHalf = leaveCodes.indexOf(attendance.firstHalfStatus.toUpperCase()) !== -1 ? leaveDisplay : attendance.firstHalfStatus
                     }
-                }
-                if (secondHalf === 'P') {
-                    if (secondHalf !== attendance.secondHalfStatus) {
-                        secondHalf = `${secondHalf}.`
+                    if (attendance.shift.status === 'holiday' || attendance.status === 'weekOff' || attendance.shift.status === 'weekOff') {
+                        firstHalf = 'WO'
+                        notWorkedDays++
+                    }
+                    if (attendance.firstHalfStatus && attendance.firstHalfStatus.toUpperCase() === 'A' && attendance.status !== 'weekOff') {
+                        firstHalf = absentCodes.indexOf(attendance.firstHalfStatus.toUpperCase()) !== -1 ? absentDisplay : attendance.firstHalfStatus
+                    }
+                    if (firstHalf === presentDisplay) {
+                        workedDays++
+                    } else if (firstHalf === absentDisplay) {
+                        absentDays++
+                    }
+                    secondHalf = attendance.secondHalfStatus ? (presentCodes.indexOf(attendance.secondHalfStatus.toUpperCase()) !== -1 ? presentDisplay : attendance.secondHalfStatus) : ''
+                    if ((attendance.status === 'onLeave' && (attendance.shift.status === 'working' || secondHalf.toLowerCase() === 'el')) && secondHalf !== 'P') {
+                        secondHalf = leaveCodes.indexOf(attendance.secondHalfStatus.toUpperCase()) !== -1 ? leaveDisplay : attendance.secondHalfStatus
+                    }
+                    if (attendance.shift.status === 'holiday' || attendance.status === 'holiday' || attendance.status === 'weekOff' || attendance.shift.status === 'weekOff') {
+                        secondHalf = 'WO'
+                        notWorkedDays++
+                    }
+                    if (attendance.secondHalfStatus && attendance.secondHalfStatus.toUpperCase() === 'A' && attendance.status !== 'weekOff') {
+                        secondHalf = absentCodes.indexOf(attendance.secondHalfStatus.toUpperCase()) !== -1 ? absentDisplay : attendance.secondHalfStatus
+                    }
+                    if (secondHalf === presentDisplay) {
+                        workedDays++
+                    } else if (secondHalf === absentDisplay) {
+                        absentDays++
+                    }
+                    if (firstHalf === 'P') {
+                        if (firstHalf !== attendance.firstHalfStatus) {
+                            firstHalf = `${firstHalf}.`
+                        }
+                    }
+                    if (secondHalf === 'P') {
+                        if (secondHalf !== attendance.secondHalfStatus) {
+                            secondHalf = `${secondHalf}.`
+                        }
+                    }
+                    if (attendance.status == "onLeave") {
+                        firstHalf = attendance.firstHalfStatus.toUpperCase()
+                        secondHalf = attendance.secondHalfStatus.toUpperCase()
+                    }
+                    if (attendance.status == "absent") {
+                        if (firstHalf == "") {
+                            firstHalf = "A"
+                        }
+                        if (secondHalf == "") {
+                            secondHalf = "A"
+                        }
                     }
                 }
             }

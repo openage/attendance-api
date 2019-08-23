@@ -1,7 +1,6 @@
 'use strict'
-let _ = require('underscore')
 
-exports.toModel = entity => {
+exports.toModel = (entity, context) => {
     var model = {
         id: entity.id,
         units: entity.units,
@@ -10,10 +9,6 @@ exports.toModel = entity => {
         approvedLeavesCount: entity.approvedLeaves || 0,
         status: entity.status
     }
-
-    // let myLeaveBalance = _.each(leaveBalances, function(leaveBalance) {
-
-    // });
 
     if (entity.leaveType) {
         if (entity.leaveType._doc) {
@@ -59,8 +54,8 @@ exports.toModel = entity => {
     return model
 }
 
-exports.toSearchModel = entities => {
+exports.toSearchModel = (entities, context) => {
     return entities.map(entity => {
-        return exports.toModel(entity)
+        return exports.toModel(entity, context)
     })
 }

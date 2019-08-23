@@ -1,5 +1,5 @@
 const moment = require('moment')
-exports.toModel = (entity) => {
+exports.toModel = (entity, context) => {
     const model = {
         id: entity.id,
         code: entity.code,
@@ -9,7 +9,11 @@ exports.toModel = (entity) => {
 
     if (entity.user && entity.user._doc) {
         model.user = {
-            id: entity.user.id
+            id: entity.user.id,
+            name: entity.user.name,
+            code: entity.user.code,
+            status: entity.user.status,
+            biometricCode: entity.user.biometricCode
         }
     } else {
         model.user = {

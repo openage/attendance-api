@@ -1,4 +1,3 @@
-const _ = require('underscore')
 const moment = require('moment')
 const reports = require('../helpers/reports')
 const excelBuilder = require('msexcel-builder')
@@ -97,7 +96,7 @@ const build = async (fileName, ofDate, getExtraHours, attendances, orgDetails) =
         let paidLeave = 0
         let lossOfPay = 0
 
-        if (data.leaves && !_.isEmpty(data.leaves)) {
+        if (data.leaves && data.leaves.length) {
             Promise.each(data.leaves, leave => {
                 if (!leave.leaveType) {
                     return

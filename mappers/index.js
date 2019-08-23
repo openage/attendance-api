@@ -1,8 +1,5 @@
 'use strict'
 var fs = require('fs')
-var join = require('path').join
-
-var _ = require('underscore')
 
 var mappers = {}
 
@@ -22,7 +19,7 @@ var init = function () {
                 mapper.toModels = function (entities) {
                     var models = []
 
-                    _(entities).each(function (entity) {
+                    entities.forEach(entity => {
                         models.push(mapper.toSummary(entity))
                     })
 

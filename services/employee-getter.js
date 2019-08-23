@@ -1,29 +1,51 @@
 const db = require('../models')
 exports.get = async (query, context) => {
-    let log = context.logger.start('services/employees:get')
+    context.logger.silly('services/employees:get')
     let where = {
         organization: context.organization
     }
     if (typeof query === 'string') {
+        if (query === 'my') {
+            query = context.user.id
+        }
         if (query.isObjectId()) {
-            return db.employee.findById(query).populate('supervisor')
+            return db.employee.findById(query).populate('shiftType supervisor')
         }
         where.code = query
-        return db.employee.findOne(where).populate('supervisor')
+        return db.employee.findOne(where).populate('shiftType supervisor')
     }
     if (query.id) {
+        if (query.id === 'my') {
+            query.id = context.user.id
+        }
+
         return db.employee.findById(query._bsontype === 'ObjectID' ? query.toString() : query.id).populate('supervisor')
     }
 
+    let user
     if (query.code) {
-        where.code = query.code
-        return db.employee.findOne(where).populate('supervisor')
+        user = await db.employee.findOne({
+            organization: context.organization,
+            code: query.code
+        }).populate('shiftType supervisor')
     }
 
-    let error = new Error(`invalid query '${query}'`)
-    log.error(error)
+    if (!user && query.role && query.role.id) {
+        user = await db.employee.findOne({
+            organization: context.organization,
+            'role.id': query.role.id
+        }).populate('shiftType supervisor')
+    }
 
-    throw error
+    if (!user && query.biometricCode) {
+        user = await db.employee.findOne({
+            organization: context.organization,
+            biometricCode: query.biometricCode,
+            status: 'temp'
+        }).populate('shiftType supervisor')
+    }
+
+    return user
 }
 
 const buildWhere = (params, context) => {

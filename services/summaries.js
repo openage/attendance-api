@@ -1,23 +1,19 @@
 'use strict'
 
-const _ = require('underscore')
 const moment = require('moment')
-const teams = require('../services/teams')
 const shifts = require('../services/shifts')
 const shiftTypes = require('../services/shift-types')
 const attendances = require('../services/attendances')
 const db = require('../models')
 
 class Today {
-    constructor (startTime, endTime) {
+    constructor () {
         this.startTime = moment().set('hour', 0).set('minute', 0).set('second', 0).set('millisecond', 0)._d
         this.endTime = moment().set('hour', 0).set('minute', 0).set('second', 0).set('millisecond', 0).add(1, 'day')._d
     }
 }
 
 exports.get = async (employeeId, context) => {
-    const log = context.logger.start('get')
-
     let employee = await db.employee.findById(employeeId).populate('shiftType organization')
 
     const insightQuery = {
@@ -51,18 +47,20 @@ exports.get = async (employeeId, context) => {
 
     employee.effectiveShiftType = await shiftTypes.upComingEffectiveShift(employee.id.toString(), context)
 
-    employee.absentDates = _.pluck(await db.attendance.find({
+    let absents = await db.attendance.find({
         employee: employeeId,
         ofDate: {
             $gte: moment().startOf('month').toISOString(),
             $lt: moment().endOf('month').toISOString()
         },
         status: 'absent'
-    }).select('ofDate').sort({ 'ofDate': 1 }).lean(), 'ofDate')
+    }).select('ofDate').sort({ 'ofDate': 1 }).lean()
 
-    employee.team = await teams.getTeam(employee)
+    employee.absentDates = absents.map(i => i.ofDate)
 
-    const myTeamEmployeeIds = _.pluck(employee.team, '_id')
+    employee.team = await db.employee.find({ supervisor: employeeId })
+
+    const myTeamEmployeeIds = employee.team.map(i => i._id)
 
     const teamAttendanceQuery = {
         ofDate: { $gte: new Today().startTime, $lt: new Today().endTime },
@@ -135,7 +133,7 @@ exports.get = async (employeeId, context) => {
                 return memberAbsentDates
             }
         })
-        member.absentDates = _.pluck(member.absentDates, 'ofDate')
+        member.absentDates = member.absentDates.map(i => i.ofDate)
 
         member.effectiveShiftType = await shiftTypes.upComingEffectiveShift(member._id.toString(), context)
     })

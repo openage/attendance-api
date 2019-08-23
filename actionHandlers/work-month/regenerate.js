@@ -72,7 +72,6 @@ exports.subscribe = async (data, context) => {
     let logger = context.logger.start('fixing')
 
     let fromDate = dates.date(data.date).bom()
-    let toDate = dates.date(data.date).eom()
 
     let meta = {
         date: fromDate
@@ -110,7 +109,7 @@ exports.subscribe = async (data, context) => {
             employees = await db.employee.find({
                 organization: global.toObjectId(context.organization.id),
                 status: 'active'
-            })
+            }).populate('supervisor')
         }
 
         task.progress = 2
@@ -123,11 +122,13 @@ exports.subscribe = async (data, context) => {
         let count = 0
 
         for (const employee of employees) {
-            await resetMonth(employee, fromDate, toDate, logger, context)
-
+            let log = context.logger.start(employee.code)
+            // await resetMonth(employee, fromDate, toDate, logger, context)
+            await monthlySummaryService.regenerate(fromDate, employee, context)
             count++
             task.progress = 2 + Math.floor(98 * count / employees.length)
             await task.save()
+            log.end()
         }
         task.status = 'done'
         await task.save()

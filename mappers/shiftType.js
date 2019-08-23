@@ -1,5 +1,5 @@
 'use strict'
-let _ = require('underscore')
+
 const extractCheckIn = (entity) => {
     if (!entity) {
         return {}
@@ -24,7 +24,7 @@ const extractCheckOut = (entity) => {
         late: entity.late || 0
     }
 }
-exports.toModel = entity => {
+exports.toModel = (entity, context) => {
     var model = {
         id: entity._id,
         name: entity.name,
@@ -98,8 +98,8 @@ exports.toModel = entity => {
     return model
 }
 
-exports.toSearchModel = entities => {
+exports.toSearchModel = (entities, context) => {
     return entities.map(entity => {
-        return exports.toModel(entity)
+        return exports.toModel(entity, context)
     })
 }

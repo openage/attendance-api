@@ -1,16 +1,16 @@
 'use strict'
-const auth = require('../helpers/auth')
+const contextBuilder = require('../helpers/context-builder')
 const apiRoutes = require('@open-age/express-api')
 const fs = require('fs')
-const loggerConfig = require('config').get('logger')
 const appRoot = require('app-root-path')
 const specs = require('../specs')
+const fsConfig = require('config').get('folders')
 
 module.exports.configure = (app, logger) => {
     logger.start('settings:routes:configure')
     app.get('/', (req, res) => {
         res.render('index', {
-            title: '~ THIS IS AMS API ~'
+            title: '~ This Open Age AMS api ~'
         })
     })
 
@@ -34,27 +34,12 @@ module.exports.configure = (app, logger) => {
         })
     })
 
-    app.get('/reports/:file', function (req, res) {
-        var fileName = req.params.file
-        let filePath = `${appRoot}/temp/${fileName}`
-        res.download(filePath)
-    })
-
     app.get('/api/specs', function (req, res) {
         res.contentType('application/json')
         res.send(specs.get())
     })
 
-    app.get('/api/versions/current', function (req, res) {
-        var filePath = appRoot + '/version.json'
-
-        fs.readFile(filePath, function (err, data) {
-            res.contentType('application/json')
-            res.send(data)
-        })
-    })
-
-    var api = apiRoutes(app)
+    var api = apiRoutes(app, { context: { builder: contextBuilder.create } })
 
     api.model('binaries')
         .register({
@@ -68,60 +53,23 @@ module.exports.configure = (app, logger) => {
             action: 'POST',
             method: 'create',
             url: '/employee/create',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'POST',
             method: 'update',
             url: '/employee/update',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }])
 
     api.model('logs')
-        .register('REST', [auth.requiresToken])
-
-    api.model('insights')
-        .register([{
-            action: 'GET',
-            method: 'search',
-            filter: [auth.requiresOrg, auth.requiresToken]
-        }, {
-            action: 'GET',
-            method: 'getInsightByAlert',
-            url: '/:id/daily/:date',
-            filter: [auth.requiresOrg, auth.requiresToken]
-        }, {
-            action: 'GET',
-            method: 'getAlert',
-            url: '/:id/notification',
-            filter: [auth.requiresOrg, auth.requiresToken]
-        }, {
-            action: 'GET',
-            method: 'getAlert',
-            url: '/:id/report',
-            filter: [auth.requiresOrg, auth.requiresToken]
-        }, {
-            action: 'GET',
-            method: 'getReports',
-            url: '/:id/report/list',
-            filter: [auth.requiresOrg, auth.requiresToken]
-        }, {
-            action: 'POST',
-            method: 'createReport',
-            url: '/:id/report',
-            filter: [auth.requiresOrg, auth.requiresToken]
-        }, {
-            action: 'POST',
-            method: 'getEmployees',
-            url: '/:id/daily/:date',
-            filter: [auth.requiresOrg, auth.requiresToken]
-        }])
+        .register('REST', { permissions: 'organization.user' })
 
     api.model('syncs')
         .register({
             action: 'GET',
             method: 'getVersions',
             url: '/version',
-            filter: [auth.requiresOrg, auth.requiresToken]
+            permissions: 'organization.user'
         })
 
     api.model('configs')
@@ -135,15 +83,13 @@ module.exports.configure = (app, logger) => {
         .register([{
             action: 'PUT',
             method: 'update',
-            url: '/:id'
-        }, {
-            action: 'POST',
-            method: 'create'
+            url: '/:id',
+            permissions: 'organization.admin'
         }, {
             action: 'GET',
             method: 'get',
             url: '/:id',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }])
 
     api.model('shiftTypes')
@@ -151,119 +97,83 @@ module.exports.configure = (app, logger) => {
             action: 'PUT',
             method: 'update',
             url: '/:id',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'POST',
             method: 'create',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'GET',
             url: '/byDate',
             method: 'getByDate',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'GET',
             method: 'search',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'GET',
             url: '/:id',
             method: 'get',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'DELETE',
             url: '/:id',
             method: 'delete',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }])
-
-    api.model('channelTypes')
-        .register('REST', [auth.requiresToken])
-
-    api.model('channels')
-        .register('REST', [auth.requiresToken])
-
-    api.model('alertTypes')
-        .register([{
-            action: 'PUT',
-            method: 'update',
-            url: '/:id',
-            filter: [auth.requiresToken]
-        }, {
-            action: 'POST',
-            method: 'create',
-            filter: [auth.requiresToken]
-        }, {
-            action: 'GET',
-            method: 'search'
-        }, {
-            action: 'GET',
-            url: '/:id',
-            method: 'get'
-        }])
-
-    api.model('alerts')
-        .register('REST', [auth.requiresToken])
-
-    api.model('alerts')
-        .register({
-            action: 'PUT',
-            method: 'subscribeAlert',
-            url: '/subscribe/:id',
-            filter: [auth.requiresToken]
-        })
 
     api.model('devices')
         .register([{
             action: 'PUT',
             method: 'update',
             url: '/:id',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'PUT',
             method: 'setStatus',
             url: '/:id/status',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'PUT',
             method: 'setLastSyncTime',
             url: '/:id/lastSyncTime',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'POST',
             method: 'create',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'POST',
             method: 'setLastSyncTime',
             url: '/lastSyncTime',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'GET',
             method: 'search',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'GET',
             url: '/:id',
             method: 'get',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'DELETE',
             method: 'delete',
             url: '/:id',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'POST',
             method: 'syncTimeLogs',
             url: '/:deviceId/logs',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }])
 
     api.model('categories')
-        .register('REST', [auth.requiresToken])
+        .register('REST', { permissions: 'organization.user' })
 
     api.model('machines')
-        .register('REST', [auth.requiresToken])
+        .register('REST', { permissions: 'organization.user' })
 
     api.model('deviceTypes')
         .register('REST')
@@ -272,109 +182,114 @@ module.exports.configure = (app, logger) => {
         .register([{
             action: 'POST',
             method: 'create',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'GET',
             method: 'search',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'PUT',
             method: 'update',
             url: '/:id',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'DELETE',
             method: 'delete',
             url: '/:id',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'POST',
             method: 'reset',
             url: '/reset',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'POST',
             method: 'bulk',
             url: '/bulk',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'POST',
             method: 'updateShiftWithXl',
             url: '/shiftUpdate/xl',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'GET',
             method: 'getRosterShiftExcel',
             url: '/roster/excelFormat',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }])
 
-    api.model('biometrics').register('REST', auth.requiresToken)
+    api.model('biometrics').register('REST', { permissions: 'organization.user' })
 
     api.model('employees')
         .register([{
             action: 'POST',
             method: 'createWithTunnel',
             url: '/makeTunnel',
-            filter: auth.requiresOrg
+            permissions: 'organization.user'
         }, {
             action: 'POST',
             method: 'createWithExternalToken',
-            filter: auth.requiresOrg
+            permissions: 'organization.user'
         }, {
             action: 'POST',
             method: 'create', // for ems
             url: '/fromEms',
-            filter: auth.requiresOrg
+            permissions: 'organization.user'
+        }, {
+            action: 'PUT',
+            method: 'merge',
+            url: '/:id/merge',
+            filter: [auth.requiresToken]
         }, {
             action: 'PUT',
             method: 'update',
             url: '/:id',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'GET',
             method: 'get',
             url: '/:id',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'GET',
             method: 'search',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'GET',
             method: 'searchInTeam',
             url: '/from/team',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'GET',
             method: 'getSupervisor',
             url: '/get/supervisor/:id',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'GET',
             method: 'getEmpByAdmin',
             url: '/forAdmin/:id',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'GET',
             method: 'getEmployeesBirthdays',
             url: '/get/birthdays',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'PUT',
             method: 'uploadNightShifters',
             url: '/uploadNightShifters/:shiftType',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'GET',
             method: 'syncEmployees',
             url: '/sync/updates',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'GET',
             method: 'notTakenLeaves',
             url: '/leaves/notTaken',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }])
 
     api.model('shifts')
@@ -382,20 +297,20 @@ module.exports.configure = (app, logger) => {
             action: 'POST',
             method: 'createMultiple',
             url: '/many',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'POST',
             method: 'create',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'GET',
             method: 'get',
             url: '/:id',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'GET',
             method: 'search',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }])
 
     api.model('attendances')
@@ -403,209 +318,223 @@ module.exports.configure = (app, logger) => {
             action: 'GET',
             method: 'getSingleDayAttendancesExcel',
             url: '/dayReport',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'GET',
             method: 'getAttendanceLogs',
             url: '/:id/logs',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'GET',
             method: 'LocationLogsByDate',
             url: '/:id/getLocations',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'GET',
             method: 'getLocationLogs',
             url: '/:id/locationLogs',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'GET',
             method: 'singleEmployeeMonthlyReport',
             url: '/monthReport',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'GET',
             method: 'getOneDayAttendances',
             url: '/getOneDayAttendances',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'POST',
             method: 'bulk',
             url: '/bulk',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'PUT',
             method: 'continueShift',
             url: '/:id/continue',
-            filter: [auth.requiresToken]
-        },
-        {
+            permissions: 'organization.user'
+        }, {
             action: 'GET',
             method: 'attendanceExtractor',
             url: '/extractor',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'GET',
             method: 'attendanceMonthlyPdf',
             url: '/monthlyPdf',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'GET',
             method: 'get',
             url: '/:id',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'GET',
             method: 'search',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'GET',
             method: 'summary',
             url: '/:id/summary',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'GET',
             method: 'getMonthlySummary',
             url: '/employee/month/summary',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'GET',
             method: 'upadteTeamInAttendance',
             url: '/update/team/in/attendance',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'GET',
             method: 'deleteTeamInAttendance',
             url: '/delete/team/in/attendance',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'PUT',
             method: 'update',
             url: '/:id',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'POST',
             method: 'create',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'POST',
             method: 'regenerate',
             url: '/regenerate',
-            filter: [auth.requiresToken]
-        }, {
-            action: 'PUT',
-            method: 'updateByExtServer',
-            url: '/byExtServer/:empCode',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'POST',
             method: 'markAbsentAttendance',
             url: '/markAbsent',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'PUT',
             method: 'trackLocation',
             url: '/:id/addLocation',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'PUT',
             method: 'updateHoursWorked',
             url: '/update/hours/worked',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'GET',
             method: 'getCurrentDate',
             url: '/current/date',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'PUT',
             method: 'extendShift',
             url: '/:id/extendShift',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'PUT',
             method: 'clearAction',
             url: '/:id/clearAction',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }])
 
     api.model('holidays')
         .register([{
             action: 'POST',
             method: 'create',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'GET',
             method: 'get',
             url: '/:date',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'GET',
             method: 'search',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }])
 
     api.model('leaveTypes')
-        .register('REST', [auth.requiresToken])
-
-    api.model('teams')
-        .register({
-            action: 'Get',
-            url: '/:id/teamMembers',
-            method: 'getMyTeam',
-            filter: [auth.requiresToken]
-        })
+        .register([{
+            action: 'POST',
+            method: 'create',
+            permissions: 'organization.admin'
+        }, {
+            action: 'POST',
+            method: 'bulk',
+            url: '/bulk',
+            permissions: 'organization.admin'
+        }, {
+            action: 'GET',
+            method: 'get',
+            url: '/:id',
+            permissions: 'organization.user'
+        }, {
+            action: 'DELETE',
+            method: 'delete',
+            url: '/:id',
+            permissions: 'organization.admin'
+        }, {
+            action: 'PUT',
+            method: 'update',
+            url: '/:id',
+            permissions: 'organization.admin'
+        }, {
+            action: 'GET',
+            method: 'search',
+            permissions: 'organization.user'
+        }])
 
     api.model('leaves')
         .register([{
             action: 'PUT',
             url: '/:id/action',
             method: 'actionOnLeave',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'POST',
             method: 'create',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'POST',
             method: 'createMultiple',
             url: '/many',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'POST',
             method: 'bulk',
             url: '/bulk',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'GET',
             method: 'get',
             url: '/:id',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'DELETE',
             method: 'delete',
             url: '/:id',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'PUT',
             method: 'update',
             url: '/:id',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'GET',
             method: 'search',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'GET',
             url: '/my/teamLeaves',
             method: 'myTeamLeaves',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'GET',
             url: '/my/organization',
             method: 'organizationLeaves',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }])
 
     api.model('leaveBalances')
@@ -613,41 +542,41 @@ module.exports.configure = (app, logger) => {
             action: 'POST',
             method: 'leaveBalanceExtractorByExcel',
             url: '/importer/excel',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'POST',
             method: 'createForMany',
             url: '/forMany',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'POST',
             method: 'runOvertimeRule',
             url: '/run-overtime-rule',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'PUT',
             method: 'update',
             url: '/:id',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'POST',
             method: 'grant',
             url: '/:id/grant',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'GET',
             method: 'search',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'GET',
             method: 'organizationLeaveBalances',
             url: '/my/organization',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'PUT',
             method: 'multiUpdateBalance',
             url: '/multi/:employee',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }
         ])
 
@@ -659,101 +588,43 @@ module.exports.configure = (app, logger) => {
         }, {
             action: 'POST',
             method: 'create',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'PUT',
             method: 'update',
             url: '/:id',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'POST',
             method: 'move',
             url: '/move',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'POST',
             method: 'bulk',
             url: '/bulk',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'POST',
             method: 'regenerate',
             url: '/regenerate',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'GET',
             method: 'search',
-            filter: [auth.requiresToken]
-        }])
-
-    api.model('notifications')
-        .register([{
-            action: 'DELETE',
-            method: 'delete',
-            filter: [auth.requiresToken]
-        }, {
-            action: 'GET',
-            method: 'search',
-            filter: [auth.requiresToken]
-        }, {
-            action: 'PUT',
-            method: 'archive',
-            url: '/:id/archive/:employee',
-            filter: [auth.requiresToken]
-        }])
-
-    api.model('messages')
-        .register([{
-            action: 'POST',
-            method: 'reportBug',
-            url: '/reportBug',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }])
 
     api.model('deviceLogs')
         .register([{
             action: 'POST',
             method: 'create',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'GET',
             method: 'search',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }])
-
-    api.model('tags')
-        .register([{
-            action: 'GET',
-            method: 'get',
-            url: '/:id'
-        }, {
-            action: 'POST',
-            method: 'create',
-            filter: [auth.requiresToken]
-        }, {
-            action: 'GET',
-            url: '/byType/:id',
-            method: 'tagsByTagType',
-            filter: [auth.requiresToken]
-        }])
-
-    api.model('tagTypes')
-        .register([{
-            action: 'GET',
-            method: 'get',
-            url: '/:id'
-        }, {
-            action: 'POST',
-            method: 'create',
-            filter: [auth.requiresToken]
-        }, {
-            action: 'GET',
-            method: 'search',
-            filter: [auth.requiresToken]
-        }])
-
-    api.model('reportRequests')
-        .register('REST', [auth.requiresToken])
 
     api.model('systems')
         .register([{
@@ -763,12 +634,12 @@ module.exports.configure = (app, logger) => {
         }])
 
     api.model('tasks')
-        .register('REST', [auth.requiresToken])
+        .register('REST', { permissions: 'organization.user' })
         .register([{
             action: 'PUT',
             method: 'run',
             url: '/:id/run',
-            filter: [auth.requiresToken]
+            permissions: 'organization.admin'
         }])
     logger.end()
 }

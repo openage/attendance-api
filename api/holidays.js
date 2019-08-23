@@ -1,6 +1,5 @@
 'use strict'
 const mapper = require('../mappers/holiday')
-const dbQuery = require('../helpers/querify')
 const moment = require('moment')
 const offline = require('@open-age/offline-processor')
 const db = require('../models')
@@ -31,17 +30,17 @@ exports.create = (req, res) => {
         organization: req.context.organization.id
     }
 
-    dbQuery.getHoliday({
+    db.getHoliday({
         date: model.date,
         organization: req.context.organization.id
     })
         .then(holiday => {
             if (holiday) {
-                throw `This date already alloted to ${holiday.name}`
+                throw new Error(`This date already alloted to ${holiday.name}`)
             }
             return createHoliday(creator)
                 .then(holiday => {
-                    res.data(mapper.toModel(holiday))
+                    res.data(mapper.toModel(holiday, req.context))
                     return holiday
                 })
         })
@@ -114,7 +113,7 @@ exports.search = (req, res) => {
             date: 1
         }).skip(fromPage).limit(pageLmt)
     ]).then((result) => {
-        return res.page(mapper.toSearchModel(result[1]), pageLmt, PageNo, result[0])
+        return res.page(mapper.toSearchModel(result[1]), pageLmt, PageNo, result[0], req.context)
     }).catch(err => res.failure(err))
 }
 
@@ -129,7 +128,7 @@ exports.get = (req, res) => {
     }
 
     db.holiday.findOne(query)
-        .then(holiday => res.data(mapper.toModel(holiday)))
+        .then(holiday => res.data(mapper.toModel(holiday, req.context)))
         .catch(err => {
             res.failure(err)
         })

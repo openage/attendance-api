@@ -1,7 +1,5 @@
 'use strict'
-let _ = require('underscore')
-
-exports.toModel = entity => {
+exports.toModel = (entity, context) => {
     var model = {
         id: entity.id,
         name: entity.name
@@ -9,8 +7,8 @@ exports.toModel = entity => {
 
     model.machines = []
 
-    if (!_.isEmpty(entity.machines)) {
-        _.each(entity.machines, machine => {
+    if (entity.machines && entity.machines.length) {
+        entity.machines.forEach(machine => {
             model.machines.push({
                 id: machine.id.toString(),
                 model: machine.model,
@@ -25,8 +23,8 @@ exports.toModel = entity => {
     return model
 }
 
-exports.toSearchModel = entities => {
+exports.toSearchModel = (entities, context) => {
     return entities.map(entity => {
-        return exports.toModel(entity)
+        return exports.toModel(entity, context)
     })
 }

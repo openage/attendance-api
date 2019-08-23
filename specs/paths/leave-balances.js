@@ -147,10 +147,6 @@ module.exports = [{
             'in': 'query',
             'description': 'name'
         }, {
-            'name': 'tagId',
-            'in': 'query',
-            'description': 'send tagId'
-        }, {
             'name': 'pageNo',
             'in': 'query',
             'description': 'pageNo',

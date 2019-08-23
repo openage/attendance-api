@@ -5,28 +5,33 @@ const employeeService = require('../services/employee-getter')
 const mapper = require('../mappers/biometric')
 const db = require('../models')
 
+const pager = require('../helpers/paging')
+
 exports.create = async (req) => {
     const entity = await service.create(req.body, req.context)
-    return mapper.toModel(entity)
+    return mapper.toModel(entity, req.context)
 }
 
 exports.get = async (req) => {
     const entity = await service.get(req.params.id, req.context)
-    return mapper.toModel(entity)
+    return mapper.toModel(entity, req.context)
 }
 
 exports.search = async (req) => {
-    const entities = await service.search(req.query, req.context)
-    return entities.map(item => {
+    let paging = pager.extract(req)
+    const page = await service.search(req.query, paging, req.context)
+    page.items = page.items.map(item => {
         let model = mapper.toModel(item)
         model.marks = undefined
         return model
     })
+
+    return page
 }
 
 exports.update = async (req, res) => {
     const entity = await service.update(req.params.id, req.body, req.context)
-    return mapper.toModel(entity)
+    return mapper.toModel(entity, req.context)
 }
 
 exports.bulk = async (req) => {

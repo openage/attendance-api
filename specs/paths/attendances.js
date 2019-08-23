@@ -115,10 +115,6 @@ module.exports = [{
             'in': 'query',
             'description': 'send code'
         }, {
-            'name': 'tagId',
-            'in': 'query',
-            'description': 'send tag Id'
-        }, {
             'name': 'org-code',
             'in': 'header',
             'description': 'code of organization',
@@ -417,10 +413,6 @@ module.exports = [{
             'name': 'shiftType',
             'in': 'query',
             'description': 'send shiftType id'
-        }, {
-            'name': 'tagId',
-            'in': 'query',
-            'description': 'send tagId'
         }, {
             'name': 'code',
             'in': 'query',

@@ -1,8 +1,4 @@
 'use strict'
-const logger = require('@open-age/logger')('services.employee')
-const async = require('async')
-const moment = require('moment')
-const offline = require('@open-age/offline-processor')
 const db = require('../models')
 const employees = require('../services/employees')
 const dates = require('../helpers/dates')

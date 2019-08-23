@@ -2,7 +2,7 @@
 
 const moment = require('moment')
 
-exports.toModel = entity => {
+exports.toModel = (entity, context) => {
     if (!entity) {
         return
     }
@@ -81,8 +81,8 @@ exports.toModel = entity => {
     return model
 }
 
-exports.toSearchModel = entities => {
+exports.toSearchModel = (entities, context) => {
     return entities.map(entity => {
-        return exports.toModel(entity)
+        return exports.toSearchModel(entities, context)
     })
 }

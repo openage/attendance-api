@@ -1,8 +1,5 @@
 'use strict'
 const fs = require('fs')
-const join = require('path').join
-const camelCase = require('camel-case')
-const _ = require('underscore')
 
 const generators = {}
 

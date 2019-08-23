@@ -7,7 +7,7 @@ const offline = require('@open-age/offline-processor')
 
 exports.create = async (req) => {
     const task = await service.create(req.body, req.context)
-    return mapper.toModel(task)
+    return mapper.toModel(task, req.context)
 }
 
 exports.run = async (req) => {
@@ -29,7 +29,7 @@ exports.run = async (req) => {
 exports.get = async (req) => {
     const task = await service.get(req.params.id, req.context)
 
-    return mapper.toModel(task)
+    return mapper.toModel(task, req.context)
 }
 
 exports.search = async (req) => {
@@ -75,11 +75,11 @@ exports.search = async (req) => {
 
     const tasks = await service.search(query, req.context)
 
-    return mapper.toSearchModel(tasks)
+    return mapper.toSearchModel(tasks, req.context)
 }
 
 exports.update = async (req, res) => {
     const task = await service.update(req.params.id, req.body, req.context)
 
-    return mapper.toModel(task)
+    return mapper.toModel(task, req.context)
 }

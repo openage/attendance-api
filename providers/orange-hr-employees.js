@@ -1,28 +1,13 @@
 'use strict'
-const logger = require('@open-age/logger')('provider.orange-hr-employees')
 let Client = require('node-rest-client-promise').Client
-let client = new Client()
 var defaultConfig = require('config').get('providers.orange-hr-employees')
-var _ = require('underscore')
-
-let parsedConfig = (config) => {
-    if (!config) {
-        return defaultConfig
-    }
-
-    return {
-        url: config.url || defaultConfig.url,
-        api_key: config.api_key,
-        lastSyncDate: config.lastSyncDate
-    }
-}
 
 /**
  * fetches employees from orange hr
  * @param config - ems config of that org
  * @returns employees
  */
-exports.fetch = (config, context) => {
+exports.fetch = () => {
     Promise.reject(new Error('not implemented'))
 }
 
@@ -32,6 +17,6 @@ exports.fetch = (config, context) => {
  * @param config - ems config of that org
  * @returns status of call
  */
-exports.push = (changes, config, context) => {
+exports.push = () => {
     Promise.reject(new Error('not implemented'))
 }

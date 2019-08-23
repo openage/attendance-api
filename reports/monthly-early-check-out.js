@@ -43,17 +43,6 @@ module.exports = async (params, context) => {
         }
     }
 
-    if (params.tagIds && params.tagIds.length) {
-        let tagIds = []
-        let queryTags = params.tagIds.split(',')
-        Promise.each(queryTags, (tagId) => {
-            tagIds.push(global.toObjectId(tagId))
-        })
-        query.tags = {
-            $in: tagIds
-        }
-    }
-
     if (params.code) {
         query.code = {
             $regex: params.code,

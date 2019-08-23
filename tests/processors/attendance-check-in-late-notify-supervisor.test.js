@@ -8,7 +8,7 @@ let testData = require('../testData');
 
 
 describe('attendance-check-in-late-notify-supervisor processor', function () {
-    let processor = require('../../actionHandlers/attendance/check-in/coming-late-notify-supervisor');
+    let processor = require('../../actionHandlers/attendance/check-in/defaults/came-late');
 
     beforeEach(function () {
         sinon.stub(communications, 'send');
@@ -38,19 +38,19 @@ describe('attendance-check-in-late-notify-supervisor processor', function () {
         return processor.process({
             id: "597f2d319f2c5e1cd33ffc7e"
         }, {
-            trigger: {
-                noOfTime: 2,
-                inARow: false,
-                noOfMin: 30
-            },
-            processor: {
-                level: 1,
-                channel: 'chat'
-            }
-        }, testData.context).then(() => {
-            sinon.assert.calledOnce(communications.send);
-            attendanceMock.restore();
-        });
+                trigger: {
+                    noOfTime: 2,
+                    inARow: false,
+                    noOfMin: 30
+                },
+                processor: {
+                    level: 1,
+                    channel: 'chat'
+                }
+            }, testData.context).then(() => {
+                sinon.assert.calledOnce(communications.send);
+                attendanceMock.restore();
+            });
     });
 
     it('should not notify', function () {
@@ -69,18 +69,18 @@ describe('attendance-check-in-late-notify-supervisor processor', function () {
         return processor.process({
             id: "597f2d319f2c5e1cd33ffc7e"
         }, {
-            trigger: {
-                noOfTime: 2,
-                inARow: false,
-                noOfMin: 30
-            },
-            processor: {
-                level: 1,
-                channel: 'chat'
-            }
-        }, testData.context).then(() => {
-            sinon.assert.notCalled(communications.send);
-            attendanceMock.restore();
-        });
+                trigger: {
+                    noOfTime: 2,
+                    inARow: false,
+                    noOfMin: 30
+                },
+                processor: {
+                    level: 1,
+                    channel: 'chat'
+                }
+            }, testData.context).then(() => {
+                sinon.assert.notCalled(communications.send);
+                attendanceMock.restore();
+            });
     });
 });

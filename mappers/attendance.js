@@ -3,7 +3,7 @@
 var timeLogMapper = require('./timeLog')
 const shiftTypeMapper = require('./shiftType')
 
-exports.toModel = entity => {
+exports.toModel = (entity, context) => {
     var model = {
         id: entity.id || entity._id,
         status: entity.status,
@@ -63,7 +63,7 @@ exports.toModel = entity => {
             if (shiftType) {
                 model.shift.shiftType = {}
                 if (shiftType._doc || shiftType.code) {
-                    model.shift.shiftType = shiftTypeMapper.toModel(shiftType)
+                    model.shift.shiftType = shiftTypeMapper.toModel(shiftType, context)
                 } else {
                     model.shift.shiftType.id = shiftType.toString()
                 }
@@ -77,15 +77,15 @@ exports.toModel = entity => {
 
     if (entity.timeLogs && entity.timeLogs.length) {
         entity.timeLogs.forEach(item => {
-            model.timeLogs.push(timeLogMapper.toModel(item))
+            model.timeLogs.push(timeLogMapper.toModel(item, context))
         })
     }
 
     if (entity.passes && entity.passes.length) {
         entity.passes.forEach(item => {
             model.passes.push({
-                out: timeLogMapper.toModel(item.out),
-                in: timeLogMapper.toModel(item.in)
+                out: timeLogMapper.toModel(item.out, context),
+                in: timeLogMapper.toModel(item.in, context)
             })
         })
     }
@@ -113,8 +113,8 @@ exports.toModel = entity => {
     return model
 }
 
-exports.toSearchModel = entities => {
+exports.toSearchModel = (entities, context) => {
     return entities.map(entity => {
-        return exports.toModel(entity)
+        return exports.toModel(entity, context)
     })
 }

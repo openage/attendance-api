@@ -1,20 +1,32 @@
 'use strict'
-let _ = require('underscore')
 
-exports.toModel = entity => {
+exports.toModel = (entity, context) => {
     var model = {
         id: entity.id,
         model: entity.model,
         manufacturer: entity.manufacturer,
         picUrl: entity.picUrl,
-        picData: entity.picData,
-        category: entity.category
+        picData: entity.picData
     }
+
+    if (entity.category) {
+        if (entity.category._doc) {
+            model.category = {
+                id: entity.category.id,
+                name: entity.category.name
+            }
+        } else {
+            model.category = {
+                id: entity.category.toString()
+            }
+        }
+    }
+
     return model
 }
 
-exports.toSearchModel = entities => {
+exports.toSearchModel = (entities, context) => {
     return entities.map(entity => {
-        return exports.toModel(entity)
+        return exports.toModel(entity, context)
     })
 }

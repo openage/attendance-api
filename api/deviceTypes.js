@@ -23,7 +23,7 @@ exports.create = (req, res) => {
 
     db.deviceType.findOrCreate(data, data)
         .then(device => {
-            return res.data(mapper.toModel(device.result))
+            return res.data(mapper.toModel(device.result, req.context))
         })
         .catch(err => res.failure(err))
 }
@@ -46,7 +46,7 @@ exports.update = (req, res) => {
             updationScheme.update(model, device)
             return device.save()
         })
-        .then(device => res.data(mapper.toModel(device)))
+        .then(device => res.data(mapper.toModel(device, req.context)))
         .catch(err => res.failure(err))
 }
 
@@ -89,7 +89,7 @@ exports.search = (req, res) => {
             db.deviceType.find(query)
                 .populate('machine category')
                 .then(devices => {
-                    return res.page(mapper.toSearchModel(devices))
+                    return res.page(mapper.toSearchModel(devices, req.context))
                 })
         })
         .catch(err => res.failure(err))

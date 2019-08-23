@@ -1,6 +1,5 @@
 'use strict'
 const moment = require('moment')
-const _ = require('underscore')
 const dates = require('../helpers/dates')
 const timeLogService = require('../services/time-logs')
 const monthlySummaryService = require('../services/monthly-summaries')
@@ -86,8 +85,6 @@ exports.data = async (params, context) => {
     params.dates.from = params.dates.from || new Date()
     let log = context.logger.start('getData')
 
-    let fromDate = dates.date(params.dates.from).bom()
-    let toDate = dates.date(params.dates.from).eom()
     let monthlysummary = await monthlySummaryService.search(params, {
         columns: []
     }, context)
@@ -310,9 +307,9 @@ exports.format = async (params, context) => {
                     col: 1,
                     row: 1
                 }, {
-                    col: 18,
-                    row: 2
-                })
+                        col: 18,
+                        row: 2
+                    })
                 sheet.width(1, 18)
                 sheet.font(1, 1, {
                     bold: 'true',

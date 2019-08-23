@@ -1,4 +1,3 @@
-const _ = require('underscore')
 const moment = require('moment')
 const reports = require('../helpers/reports')
 const excelBuilder = require('msexcel-builder')

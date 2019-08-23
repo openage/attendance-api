@@ -1,9 +1,7 @@
 'use strict'
-let _ = require('underscore')
-
 let moment = require('moment')
 
-exports.toModel = entity => {
+exports.toModel = (entity, context) => {
     var model = {
         name: entity.name,
         bssid: entity.bssid,
@@ -60,8 +58,8 @@ exports.toModel = entity => {
     return model
 }
 
-exports.toSearchModel = entities => {
+exports.toSearchModel = (entities, context) => {
     return entities.map(entity => {
-        return exports.toModel(entity)
+        return exports.toModel(entity, context)
     })
 }

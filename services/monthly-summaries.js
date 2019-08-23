@@ -2,9 +2,8 @@
 /* eslint-disable quotes */
 'use strict'
 const db = require('../models')
-const _ = require('underscore')
 const dates = require('../helpers/dates')
-const employeeService = require('../services/employee-getter')
+const employeeService = require('./employee-getter')
 
 var moment = require('moment')
 
@@ -41,16 +40,7 @@ const allColumns = [
     "_id"
 ]
 
-const summaryColumns = [
-    "employee",
-    "employeeModel",
-    "leavesSummary",
-    "attendanceSummary",
-    "shiftSummary",
-    "_id"
-]
-
-const toEmployeeModel = (employee, context) => {
+const toEmployeeModel = (employee) => {
     let model = {
         id: employee.id || '',
         name: employee.name,
@@ -241,6 +231,8 @@ const calculate = (entity, context) => {
     let shiftSummary = []
     let leavesSummary = []
 
+    entity.leaves = entity.leaves || []
+
     entity.leaves.forEach(item => {
         let groupedLeave = leavesSummary.find(s => s.code.toLowerCase() === item.leaveType.code.toLowerCase())
         if (!groupedLeave) {
@@ -256,6 +248,7 @@ const calculate = (entity, context) => {
         }
     })
 
+    entity.attendances = entity.attendances || []
     entity.attendances.forEach((item) => {
         attendanceSummary.count++
 
@@ -358,7 +351,7 @@ const setEmployee = async (entity, employee, context) => {
     return employee
 }
 
-const setLeaves = async (entity, context) => {
+const setLeaves = async (entity) => {
     entity.leaves = []
     let leaves = await db.leave.find({
         employee: entity.employee,
@@ -431,10 +424,64 @@ exports.update = async (date, employee, context) => {
     return entity
 }
 
+exports.regenerate = async (date, employee, context) => {
+    let bom = dates.date(date).bom()
+    let eom = dates.date(date).eom()
+
+    let log = context.logger.start(`regenerate: ${bom}`)
+
+    let entity = await db.monthSummary.findOne({
+        month: bom,
+        employee: employee
+    })
+
+    if (!entity) {
+        entity = new db.monthSummary({
+            month: bom,
+            employee: employee,
+            organization: context.organization
+        })
+    }
+
+    setEmployee(entity, employee, context)
+
+    let attendances = await db.attendance.find({
+        ofDate: {
+            $gte: bom,
+            $lte: eom
+        },
+        employee: employee
+    })
+        .populate('timeLogs')
+        .populate({
+            path: 'shift',
+            populate: {
+                path: 'shiftType'
+            }
+        })
+
+    entity.attendances = []
+
+    attendances.sort((a, b) => moment(a.ofDate).isAfter(b.ofDate) ? 1 : -1)
+
+    attendances.forEach(item => {
+        let model = toAttendanceModel(item)
+        entity.attendances.push(model)
+    })
+
+    calculate(entity, context)
+
+    await entity.save()
+
+    log.end()
+
+    return entity
+}
+
 exports.updateEmployee = async (employee, context) => {
     let entity = await getSummary(new Date(), employee, context)
 
-    setEmployee(entity, employee, context)
+    await setEmployee(entity, employee, context)
 
     await entity.save()
 
@@ -507,109 +554,61 @@ exports.search = async (params, pageInput, context) => {
         }
 
         if (params.employee.userTypes) {
-            let userTypesList = []
-            let queryUserTypesList = params.employee.userTypes
-            _.each(queryUserTypesList, (userType) => {
-                userTypesList.push(userType.code.toLowerCase())
-            })
             query['employeeModel.userType'] = {
-                $in: userTypesList
+                $in: params.employee.userTypes.map(i => i.code.toLowerCase())
             }
         }
 
         if (params.employee.departments) {
-            let departmentList = []
-            let queryDepartmentList = params.employee.departments
-            _.each(queryDepartmentList, (department) => {
-                departmentList.push(department.name)
-            })
             query['employeeModel.department'] = {
-                $in: departmentList
+                $in: params.employee.departments.map(i => i.name)
             }
         }
         if (params.employee.divisions) {
-            let divisionList = []
-            let queryDivisionList = params.employee.divisions
-            _.each(queryDivisionList, (division) => {
-                divisionList.push(division.name)
-            })
             query['employeeModel.division'] = {
-                $in: divisionList
+                $in: params.employee.divisions.map(i => i.name)
             }
         }
 
         if (params.employee.designations) {
-            let designationList = []
-            let queryDesignationList = params.employee.designations
-            _.each(queryDesignationList, (designation) => {
-                designationList.push(designation.name)
-            })
             query['employeeModel.designation'] = {
-                $in: designationList
+                $in: params.employee.designations.map(i => i.name)
             }
         }
 
         if (params.employee.contractors) {
-            let contractorList = []
-            let queryContractorsList = params.employee.contractors
-            _.each(queryContractorsList, (contractor) => {
-                contractorList.push(contractor.name.toLowerCase())
-            })
             query['employeeModel.contractor'] = {
-                $in: contractorList
+                $in: params.employee.contractors.map(i => i.name)
             }
         }
-        if (params.userTypes) {
-            let userTypesList = []
-            let queryUserTypesList = params.userTypes
-            _.each(queryUserTypesList, (userType) => {
-                userTypesList.push(userType.toLowerCase())
-            })
-            query['employeeModel.userType'] = {
-                $in: userTypesList
-            }
-        }
-        if (params.departments) {
-            let departmentList = []
-            let queryDepartmentList = params.departments
-            _.each(queryDepartmentList, (department) => {
-                departmentList.push(department)
-            })
-            query['employeeModel.department'] = {
-                $in: departmentList
-            }
-        }
-        if (params.divisions) {
-            let divisionList = []
-            let queryDivisionList = params.divisions
-            _.each(queryDivisionList, (division) => {
-                divisionList.push(division)
-            })
-            query['employeeModel.division'] = {
-                $in: divisionList
-            }
-        }
+    }
 
-        if (params.designations) {
-            let designationList = []
-            let queryDesignationList = params.designations
-            _.each(queryDesignationList, (designation) => {
-                designationList.push(designation)
-            })
-            query['employeeModel.designation'] = {
-                $in: designationList
-            }
+    if (params.userTypes) {
+        query['employeeModel.userType'] = {
+            $in: params.userTypes.map(i => i.code.toLowerCase())
         }
+    }
 
-        if (params.contractors) {
-            let contractorList = []
-            let queryContractorsList = params.contractors
-            _.each(queryContractorsList, (contractor) => {
-                contractorList.push(contractor.toLowerCase())
-            })
-            query['employeeModel.contractor'] = {
-                $in: contractorList
-            }
+    if (params.departments) {
+        query['employeeModel.department'] = {
+            $in: params.departments.map(i => i.name)
+        }
+    }
+    if (params.divisions) {
+        query['employeeModel.division'] = {
+            $in: params.divisions.map(i => i.name)
+        }
+    }
+
+    if (params.designations) {
+        query['employeeModel.designation'] = {
+            $in: params.designations.map(i => i.name)
+        }
+    }
+
+    if (params.contractors) {
+        query['employeeModel.contractor'] = {
+            $in: params.contractors.map(i => i.name)
         }
     }
 
@@ -663,4 +662,7 @@ exports.search = async (params, pageInput, context) => {
     return page
 }
 
+exports.get = async (query, context) => {
+    return getSummary(query.date || new Date(), query.employee, context)
+}
 exports.getSummary = getSummary

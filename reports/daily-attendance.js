@@ -1,7 +1,6 @@
 'use strict'
 
 const dates = require('../helpers/dates')
-const _ = require('underscore')
 const attendanceService = require('../services/attendances')
 const shiftTypeService = require('../services/shift-types')
 
@@ -12,7 +11,6 @@ const timeLogType = {
 }
 
 const extractQuery = (params, context) => {
-    let tagIds = []
     let ofDate = new Date()
     if (params.dates && params.dates.from) {
         ofDate = params.dates.from
@@ -47,74 +45,44 @@ const extractQuery = (params, context) => {
         }
 
         if (params.employee.userTypes) {
-            let userTypesList = []
-            let queryUserTypesList = params.employee.userTypes
-            _.each(queryUserTypesList, (userType) => {
-                userTypesList.push(userType.code)
-            })
             query['emp.userType'] = {
-                $in: userTypesList
+                $in: params.employee.userTypes.map(i => i.code)
             }
         }
 
         if (params.employee.departments) {
-            let departmentList = []
-            let queryDepartmentList = params.employee.departments
-            _.each(queryDepartmentList, (department) => {
-                departmentList.push(department.name)
-            })
             query['emp.department'] = {
-                $in: departmentList
+                $in: params.employee.departments.map(i => i.name)
             }
         }
         if (params.employee.divisions) {
-            let divisionList = []
-            let queryDivisionList = params.employee.divisions
-            _.each(queryDivisionList, (division) => {
-                divisionList.push(division.name)
-            })
             query['emp.division'] = {
-                $in: divisionList
+                $in: params.employee.divisions.map(i => i.name)
             }
         }
 
         if (params.employee.designations) {
-            let designationList = []
-            let queryDesignationList = params.employee.designations
-            _.each(queryDesignationList, (designation) => {
-                designationList.push(designation.name)
-            })
             query['emp.designation'] = {
-                $in: designationList
+                $in: params.employee.designations.map(i => i.name)
             }
         }
 
         if (params.employee.contractors) {
-            let contractorList = []
-            let queryContractorsList = params.employee.contractors
-            _.each(queryContractorsList, (contractor) => {
-                contractorList.push(contractor.name)
-            })
             query['emp.contractor'] = {
-                $in: contractorList
+                $in: params.employee.contractors.map(i => i.name)
             }
         }
     }
     if (params.shiftType) {
-        let shiftIds = []
-        let queryShifts = params.shiftType
-        queryShifts.forEach(shift => {
-            shiftIds.push(global.toObjectId(shift.id))
-        })
         query['emp.shiftType'] = {
-            $in: shiftIds
+            $in: params.shiftType.map(i => i.id)
         }
     }
     if (params.attendance) {
         if (params.attendance.states) {
             let statusList = []
             let queryStatusList = params.attendance.states
-            _.each(queryStatusList, (status) => {
+            queryStatusList.forEach(status => {
                 if (status.code === 'halfDay') {
                     status.code = 'present'
                     query.$or = [{
@@ -136,13 +104,8 @@ const extractQuery = (params, context) => {
 
         if (params.attendance.checkIn) {
             if (params.attendance.checkIn.states) {
-                let checkInStatusList = []
-                let queryCheckInStatusList = params.attendance.checkIn.states
-                _.each(queryCheckInStatusList, (checkInStatus) => {
-                    checkInStatusList.push(checkInStatus.code.toLowerCase())
-                })
                 query['checkInStatus'] = {
-                    $in: checkInStatusList
+                    $in: params.attendance.checkIn.states.map(i => i.code.toLowerCase())
                 }
                 query['status'] = 'present'
             }
@@ -166,13 +129,8 @@ const extractQuery = (params, context) => {
 
         if (params.attendance.checkOut) {
             if (params.attendance.checkOut.states) {
-                let checkOutStatusList = []
-                let queryCheckOutStatusList = params.attendance.checkOut.states
-                _.each(queryCheckOutStatusList, (checkOutStatus) => {
-                    checkOutStatusList.push(checkOutStatus.code.toLowerCase())
-                })
                 query['checkOutStatus'] = {
-                    $in: checkOutStatusList
+                    $in: params.attendance.checkOut.states.map(i => i.code.toLowerCase())
                 }
                 query['status'] = 'present'
             }
@@ -196,27 +154,20 @@ const extractQuery = (params, context) => {
 
         if (params.attendance.clocked) {
             if (params.attendance.clocked.states) {
-                let hoursList = []
-                let queryhoursList = params.attendance.clocked.states
-                _.each(queryhoursList, (hours) => {
-                    hoursList.push(hours.code.toLowerCase())
-                })
                 query['hours'] = {
-                    $in: hoursList
+                    $in: params.attendance.clocked.states.map(i => i.code.toLowerCase())
                 }
             }
             if (params.attendance.clocked.hours) {
                 if (params.attendance.clocked.hours.greaterThan) {
-                    let minutes = (params.attendance.clocked.hours.greaterThan) * 60
                     query['minutes'] = {
-                        $gte: minutes
+                        $gte: params.attendance.clocked.hours.greaterThan * 60
                     }
                 }
 
                 if (params.attendance.clocked.hours.lessThan) {
-                    let minutes = (params.attendance.clocked.hours.lessThan) * 60
                     query['minutes'] = {
-                        $lte: minutes
+                        $lte: params.attendance.clocked.hours.lessThan * 60
                     }
                 }
             }
@@ -331,7 +282,7 @@ exports.data = async (params, context) => {
 
             if (timeLog.type === timeLogType.checkOut && (
                 (item.checkOut && timeLog.time.getTime() !== item.checkOut.getTime()) ||
-                    !item.checkOut)) {
+                !item.checkOut)) {
                 if (!model.out1) {
                     model.out1 = displayTime
                 } else if (!model.out2) {
@@ -343,7 +294,7 @@ exports.data = async (params, context) => {
 
             if (timeLog.type === timeLogType.checkIn && (
                 (item.checkIn && timeLog.time.getTime() !== item.checkIn.getTime()) ||
-                    !item.checkIn)) {
+                !item.checkIn)) {
                 if (!model.in2) {
                     model.in2 = displayTime
                 } else if (!model.in3) {

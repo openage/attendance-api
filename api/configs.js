@@ -5,7 +5,6 @@ const fs = require('fs')
 const builder = require('xmlbuilder')
 const appRoot = require('app-root-path')
 const path = require('path')
-const _ = require('underscore')
 const moment = require('moment')
 const db = require('../models')
 
@@ -80,7 +79,7 @@ exports.get = (req, res) => {
 
             var feed
 
-            if (_.isEmpty(data.devices)) {
+            if (!data.devices) {
                 feed = builder.create(xmlNeeded, { encoding: 'utf-8' })
             } else {
                 for (var i = 0; i < data.devices.length; i++) {

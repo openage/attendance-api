@@ -1,19 +1,34 @@
 'use strict'
-var fs = require('fs')
-var join = require('path').join
-var mongoose = require('mongoose')
+const fs = require('fs')
+const join = require('path').join
+const mongoose = require('mongoose')
+const changeCase = require('change-case')
+const findOrCreate = require('findorcreate-promise')
+
+mongoose.Promise = global.Promise
 
 var init = function () {
-    if (global._models_init) {
-        return
-    }
     // set all the models on db
+    mongoose.plugin(findOrCreate)
+
     fs.readdirSync(__dirname).forEach(function (file) {
         if (file.indexOf('.js') && file.indexOf('index.js') < 0) {
-            require('./' + file)
+            let name = file.split('.')[0]
+            let entity = require('./' + file)
+            entity.timeStamp = {
+                type: Date,
+                default: Date.now
+            }
+            let schema = mongoose.Schema(entity, { usePushEach: true })
+
+            schema.pre('save', function (next) {
+                this.timeStamp = Date.now()
+                next()
+            })
+
+            mongoose.model(changeCase.camelCase(name), schema)
         }
     })
-    global._models_init = true
 }
 
 init()

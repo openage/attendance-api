@@ -6,18 +6,18 @@ const db = require('../models')
 
 exports.create = async (req) => {
     let shiftType = await shiftTypes.create(req.body, req.context)
-    return mapper.toModel(shiftType)
+    return mapper.toModel(shiftType, req.context)
 }
 
 exports.update = async (req) => {
     let shiftType = await shiftTypes.update(req.params.id, req.body, req.context)
-    return mapper.toModel(shiftType)
+    return mapper.toModel(shiftType, req.context)
 }
 
 exports.search = async (req, res) => {
     let shiftTypeList = await shiftTypes.search(req.query, req.context)
     return {
-        items: mapper.toSearchModel(shiftTypeList)
+        items: mapper.toSearchModel(shiftTypeList, req.context)
     }
 }
 
@@ -26,7 +26,7 @@ exports.get = async (req) => {
         _id: req.params.id
     }).lean()
 
-    return mapper.toModel(shiftType)
+    return mapper.toModel(shiftType, req.context)
 }
 
 exports.getByDate = async (req) => {
@@ -39,7 +39,7 @@ exports.getByDate = async (req) => {
     }
 
     let shiftType = await shiftTypes.getByDate(req.query.date, req.query.employee, req.context)
-    return mapper.toModel(shiftType)
+    return mapper.toModel(shiftType, req.context)
 }
 
 exports.delete = async (req) => {

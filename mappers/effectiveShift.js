@@ -1,6 +1,6 @@
 'use strict'
 
-exports.toModel = entity => {
+exports.toModel = (entity, context) => {
     let model = {
         id: entity.id,
         shiftType: entity.shiftType,
@@ -82,7 +82,7 @@ exports.toEmployeeModel = entity => {
     return model
 }
 
-exports.toSearchModel = entities => {
+exports.toSearchModel = (entities, context) => {
     return entities.map(entity => {
         let model = {
             employee: {

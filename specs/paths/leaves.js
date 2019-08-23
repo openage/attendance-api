@@ -295,10 +295,6 @@ module.exports = [{
             'in': 'query',
             'description': 'leave status'
         }, {
-            'name': 'tagId',
-            'in': 'query',
-            'description': 'send tag ID'
-        }, {
             'name': 'date',
             'in': 'query',
             'description': 'leave date'

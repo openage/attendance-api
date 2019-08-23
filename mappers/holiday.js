@@ -1,7 +1,6 @@
 'use strict'
-let _ = require('underscore')
 
-exports.toModel = entity => {
+exports.toModel = (entity, context) => {
     var model = {
         id: entity.id,
         date: entity.date,
@@ -11,8 +10,8 @@ exports.toModel = entity => {
     return model
 }
 
-exports.toSearchModel = entities => {
+exports.toSearchModel = (entities, context) => {
     return entities.map(entity => {
-        return exports.toModel(entity)
+        return exports.toModel(entity, context)
     })
 }

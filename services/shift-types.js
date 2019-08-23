@@ -3,7 +3,6 @@ const moment = require('moment')
 const offline = require('@open-age/offline-processor')
 const dates = require('../helpers/dates')
 const db = require('../models')
-const dbQuery = require('../helpers/querify')
 
 const get = async (query, context) => {
     if (query._doc) {
@@ -508,7 +507,7 @@ const search = async (query, context) => {
         where['_id'] = global.toObjectId(query.id)
     }
 
-    let shiftTypes = await dbQuery.findShiftTypes(where)
+    let shiftTypes = await db.shiftType.find(where)
 
     if (shiftTypes.length > 1) {
         shiftTypes.sort((x, y) => {

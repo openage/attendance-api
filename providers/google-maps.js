@@ -1,45 +1,46 @@
 'use strict'
-const client = new require('node-rest-client-promise').Client()
-const locationConfig = require('config').get('location')
+const genericProvider = require('../helpers/generic-provider')
 
-const getDistance = (originsPoints, destinationsPoints) => {
-    let routeDetails = {}
-    let args = {
-        path: {
-            units: locationConfig.units,
-            origins: `${originsPoints[1]},${originsPoints[0]}`,
-            destinations: `${destinationsPoints[1]}%2C${destinationsPoints[0]}%7C`,
-            key: locationConfig.key
+const config = require('config').get('providers.geolib')
+
+exports.getDistance = async (fromCoordinates, toCoordinates) => {
+    let result = await genericProvider('geolib').get({
+        units: config.units,
+        origins: `${fromCoordinates[1]},${fromCoordinates[0]}`,
+        destinations: `${toCoordinates[1]}%2C${toCoordinates[0]}%7C`
+    })
+    let routeDetails = {
+        distance: 0,
+        duration: 0
+    }
+
+    if (result.rows && result.rows.length && result.rows[0].elements && result.rows[0].elements.length) {
+        const element = result.rows[0].elements[0]
+
+        if (element.distance) {
+            routeDetails.distance = element.distance.value
+        }
+
+        if (element.duration) {
+            routeDetails.duration = element.duration.value
         }
     }
 
-    return client.getPromise(locationConfig.milesUrl, args)
-        .then((response) => {
-            routeDetails.distance = response.data.rows[0].elements[0].distance ? response.data.rows[0].elements[0].distance.value : 0
-            routeDetails.duration = response.data.rows[0].elements[0].duration ? response.data.rows[0].elements[0].duration.value : 0
-            return Promise.resolve(routeDetails)
-        })
+    return routeDetails
 }
 
-// location is object with coordinates and to update name and description
-const getLocality = (location) => {
-    let args = {
-        path: {
-            latlng: `${location.coordinates[1]}, ${location.coordinates[0]}`,
-            key: locationConfig.key
-        }
+exports.getLocality = async (coordinates) => {
+    let results = await genericProvider('geolib').get({
+        latlng: `${coordinates[1]}, ${coordinates[0]}`
+    })
+    let location = {
+        coordinates: coordinates
     }
 
-    return client.getPromise(locationConfig.localityUrl, args)
-        .then((response) => {
-            location.name = response.data.results.length !== 0 ? response.data.results[2].formatted_address : ''
-            location.description = response.data.results.length !== 0 ? response.data.results[0].formatted_address : ''
-            return location
-        })
-        .catch(err => {
-            return err
-        })
-}
+    if (results.length > 0) {
+        location.name = results[2].formatted_address
+        location.description = results[0].formatted_address
+    }
 
-exports.getDistance = getDistance
-exports.getLocality = getLocality
+    return location
+}

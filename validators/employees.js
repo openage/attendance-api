@@ -1,18 +1,18 @@
 'use strict'
-const logger = require('@open-age/logger')('validators/employee')
+const dates = require('../helpers/dates')
 
-const canFingerRegistration = (req, callback) => {
-    const log = logger.start('canFingerRegistration')
-
+exports.canFingerRegistration = async (req) => {
     if (!req.query.operation) {
-        return callback('operation is required')
+        throw new Error('operation is required')
     }
 
-    if (req.query.operation.toLowerCase() !== 'remove' && req.query.operation.toLowerCase() !== 'fetch' && req.query.operation.toLowerCase() !== 'add' && req.query.operation.toLowerCase() !== 'delete') {
-        return callback('invalid operation type')
+    if ('remove|fetch|add|delete'.indexOf(req.query.operation.toLowerCase()) === -1) {
+        throw new Error('invalid operation type')
     }
-
-    return callback()
 }
 
-exports.canFingerRegistration = canFingerRegistration
+exports.canUpdate = async (req) => {
+    if (req.body.effectiveShift && dates.date(req.body.effectiveShift.date).isPast()) {
+        throw new Error('shift date change must be larger than current date')
+    }
+}

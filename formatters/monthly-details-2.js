@@ -1,4 +1,3 @@
-const _ = require('underscore')
 const moment = require('moment')
 const reports = require('../helpers/reports')
 const excelBuilder = require('msexcel-builder')
@@ -211,7 +210,7 @@ exports.build = async (fileName, ofDate, employees, context) => {
     var workbook = excelBuilder.createWorkbook('./temp/', fileName)
     var totalEmployees = employees.length
 
-    var sheet1 = workbook.createSheet('Attendances', 100, (5 + totalEmployees) * 32)
+    var sheet1 = workbook.createSheet('Attendances', 100, (5 + totalEmployees) * 35)
     var rowNo = buildHeader(sheet1, ofDate, context)
 
     let columns = await buildColumnHeaders(sheet1, ofDate, context)

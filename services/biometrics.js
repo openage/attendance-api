@@ -88,26 +88,62 @@ exports.get = async (query, context) => {
     return null
 }
 
-exports.search = async (query, context) => {
+exports.search = async (query, paging, context) => {
     const log = context.logger.start('query')
     let where = {
         organization: context.organization
     }
 
-    if (query.userId || query.user.id) {
+    if (query.userId || query.user) {
         where.user = query.userId || query.user.id
-    }
-    if (query.device) {
-        where.device = query.device._id
+    } else if (query.userCode) {
+        where.user = await db.employee.findOne({
+            code: query.userCode,
+            organization: context.organization
+        })
+    } else if (query.userStatus && query.userStatus === 'temp') {
+        let users = await db.employee.find({
+            status: 'temp',
+            organization: context.organization
+        })
+        where.user = {
+            $in: users
+        }
     }
 
-    const items = await db.biometric.find(where).sort({
-        'timeStamp': -1
-    }).populate('device')
+    if (query.deviceId || query.device) {
+        where.device = query.deviceId || query.device.id || query.device._id
+    }
+
+    if (query.code) {
+        where.code = query.code
+    }
+
+    if (query.status) {
+        where.status = query.status
+    }
+
+    let page = {
+        pageNo: 1
+    }
+
+    if (paging && paging.limit) {
+        page.items = await db.biometric.find(where).sort({
+            'timeStamp': -1
+        }).skip(paging.skip).limit(paging.limit).populate('device user')
+        page.pageSize = paging.limit
+        page.pageNo = paging.pageNo
+        page.total = await db.biometric.find(where).count()
+    } else {
+        page.items = await db.biometric.find(where).sort({
+            'timeStamp': -1
+        }).populate('device user')
+        page.total = page.items.length
+    }
 
     log.end()
 
-    return items
+    return page
 }
 
 exports.updateCode = async (user, newCode, context) => {
@@ -124,19 +160,19 @@ exports.updateCode = async (user, newCode, context) => {
         await item.save()
 
         switch (item.status) {
-            case 'enabled':
-                await takeAction(item, 'enable', {
-                    multiple: true
-                }, context)
-                break
-            case 'disabled':
-                await takeAction(item, 'enable', {
-                    multiple: true
-                }, context)
-                await takeAction(item, 'disable', {
-                    multiple: true
-                }, context)
-                break
+        case 'enabled':
+            await takeAction(item, 'enable', {
+                multiple: true
+            }, context)
+            break
+        case 'disabled':
+            await takeAction(item, 'enable', {
+                multiple: true
+            }, context)
+            await takeAction(item, 'disable', {
+                multiple: true
+            }, context)
+            break
         }
     }
 }
@@ -283,21 +319,21 @@ const takeAction = async (biometric, action, options, context) => {
 
         // should fetch from only one m/c - cancel other fetches
         switch (action) {
-            case 'fetch':
-                where.action = 'fetch'
-                break
-            case 'enable':
-                where.device = biometric.device
-                // where.action = { $in: ['remove', 'disable'] }
-                break
-            case 'disable':
-                where.device = biometric.device
-                // where.action = { $in: ['enable', 'fetch', 'remove'] }
-                break
-            case 'remove':
-                where.device = biometric.device
-                // where.action = { $in: ['enable', 'fetch', 'disable'] }
-                break
+        case 'fetch':
+            where.action = 'fetch'
+            break
+        case 'enable':
+            where.device = biometric.device
+            // where.action = { $in: ['remove', 'disable'] }
+            break
+        case 'disable':
+            where.device = biometric.device
+            // where.action = { $in: ['enable', 'fetch', 'remove'] }
+            break
+        case 'remove':
+            where.device = biometric.device
+            // where.action = { $in: ['enable', 'fetch', 'disable'] }
+            break
         }
 
         let tasksToCancel = await taskService.search(where, context)

@@ -1,6 +1,4 @@
 'use strict'
-const logger = require('@open-age/logger')('system')
-const _ = require('underscore')
 const mapper = require('../mappers/system')
 const db = require('../models')
 
@@ -34,13 +32,6 @@ var timeLogsCount = organization => {
         employee: {
             $in: employeeIds
         }
-    }).count()
-}
-
-var alertsCount = organization => {
-    return db.alert.find({
-        organization: organization._id.toString(),
-        status: 'active'
     }).count()
 }
 
@@ -80,24 +71,22 @@ exports.usage = (req, res) => {
                     organization: organization._id
                 }).select('_id').lean()
                     .then(employees => {
-                        employeeIds = _.pluck(employees, '_id')
+                        employeeIds = employees.map(i => i._id)
                         return Promise.all([
                             activeEmployeeCount(organization),
                             neverLoggedInCount(organization),
                             lastAdminLogin(organization),
                             timeLogsCount(organization),
-                            alertsCount(organization),
                             wifiCount(organization),
                             biometricCount(organization),
                             lastEmployeeLogin(organization),
                             lastTimeLog(organization)
                         ])
-                            .spread((activeEmployeeCount, neverLoggedInCount, lastAdminLogin, timeLogsCount, alertsCount, wifiCount, biometricCount, lastEmployeeLogin, lastTimeLog) => {
+                            .spread((activeEmployeeCount, neverLoggedInCount, lastAdminLogin, timeLogsCount, wifiCount, biometricCount, lastEmployeeLogin, lastTimeLog) => {
                                 organization.activeEmployeeCount = activeEmployeeCount
                                 organization.neverLoggedInCount = neverLoggedInCount
                                 organization.lastAdminLogin = lastAdminLogin
                                 organization.timeLogsCount = timeLogsCount
-                                organization.alertsCount = alertsCount
                                 organization.wifiCount = wifiCount
                                 organization.biometricCount = biometricCount
                                 organization.lastEmployeeLogin = lastEmployeeLogin
@@ -106,7 +95,7 @@ exports.usage = (req, res) => {
                     })
             }).then((organizations) => {
                 organizations.sort(function (a, b) { return b.activeEmployeeCount - a.activeEmployeeCount })
-                res.page(mapper.toSearchModel(organizations))
+                res.page(mapper.toSearchModel(organizations, req.context))
             })
         })
 }

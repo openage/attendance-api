@@ -1,9 +1,6 @@
 'use strict'
-const mongoose = require('mongoose')
-const findOrCreate = require('findorcreate-promise')
-const findOneOrCreate = require('mongoose-find-one-or-create')
-
-var entity = new mongoose.Schema({
+var mongoose = require('mongoose')
+module.exports = {
     level: String,
     message: String,
     meta: Object,
@@ -55,14 +52,4 @@ var entity = new mongoose.Schema({
         ref: 'organization'
     },
     timeStamp: { type: Date, default: Date.now }
-})
-
-entity.pre('save', function (next) {
-    this.timeStamp = Date.now()
-    next()
-})
-
-entity.plugin(findOrCreate)
-entity.plugin(findOneOrCreate)
-
-mongoose.model('log', entity)
+}

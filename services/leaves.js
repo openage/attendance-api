@@ -1,6 +1,4 @@
 'use strict'
-const moment = require('moment')
-const async = require('async')
 
 const leaveTypes = require('./leave-types')
 const leaveBalances = require('./leave-balances')
@@ -10,6 +8,7 @@ const offline = require('@open-age/offline-processor')
 const db = require('../models')
 
 const employeeService = require('./employees')
+const attendanceService = require('../services/attendances')
 
 exports.create = async (model, context) => {
     let log = context.logger.start('services/leaves:create')
@@ -109,12 +108,23 @@ exports.create = async (model, context) => {
         }
     }
 
-    let units = model.days
+    let leaveDays = model.days;
+
+    for (let i = 0; i < model.days; i++) {
+        let attendance = await attendanceService.getAttendanceByDate(moment(fromDate).add(i, 'day').startOf('day').toDate(), employee, { create: true }, context)
+        if (attendance) {
+            if (attendance.status !== 'absent') {
+                leaveDays = leaveDays - 1
+            }
+        }
+    }
+
+    let units = leaveDays
 
     if (!leaveType.unlimited) {
-        units = (model.days % 1 === 0)
-            ? model.days * leaveType.unitsPerDay
-            : Math.ceil(model.days * leaveType.unitsPerDay) // for float
+        units = (leaveDays % 1 === 0)
+            ? leaveDays * leaveType.unitsPerDay
+            : Math.ceil(leaveDays * leaveType.unitsPerDay) // for float
 
         if (leaveBalance.units < units) {
             throw new Error('insufficient balance to apply this leave')
@@ -175,7 +185,7 @@ exports.getByDate = async (date, employee, context) => {
     return leaves
 }
 
-exports.getDaySummary = (leaves, date, context) => {
+exports.getDaySummary = (leaves, date) => {
     let leaveSummary = {
         first: false,
         second: false,
@@ -210,56 +220,158 @@ exports.getDaySummary = (leaves, date, context) => {
 
     return leaveSummary
 }
-exports.notTakenLeave = (supervisorId, date, lastDays) => {
-    return new Promise((resolve, reject) => {
-        db.team.find({
-            supervisor: supervisorId,
-            employee: {
-                $exists: true
-            }
-        }).populate('supervisor employee').then(teams => {
-            let employees = []
-            if (!teams) {
-                return resolve(null)
+
+exports.get = async (query) => {
+    if (typeof query === 'string' && query.isObjectId()) {
+        return db.leave.findById(query).populate('leaveType')
+    }
+
+    if (query.id) {
+        return db.leave.findById(query.id).populate('leaveType')
+    }
+
+    throw new Error(`invalid query '${query}'`)
+}
+
+exports.search = async (query, pager, context) => {
+    let where = {
+        organization: context.organization
+    }
+
+    let date = dates.date(query.date)
+    if (query.from && query.till) {
+        where.date = {
+            $gte: dates.date(query.from).bod(),
+            $lte: dates.date(query.till).eod()
+        }
+    } else {
+        where.date = {
+            $gte: date.bom(),
+            $lte: date.eom()
+        }
+    }
+
+    if (!context.hasPermission(['admin', 'superadmin'])) {
+        where.employee = context.employee.id
+    } else {
+        let employeeQuery = {
+            organization: context.organization
+        }
+        let filterEmployee = false
+
+        if (query.supervisorId) {
+            employeeQuery.supervisor = query.supervisorId
+            filterEmployee = true
+        }
+
+        if (query.name) {
+            employeeQuery.name = {
+                $regex: query.name,
+                $options: 'i'
             }
 
-            async.eachSeries(teams, (team, next) => {
-                if (!team.employee) {
-                    return next()
-                }
-                db.leave.find({
-                    employee: team.employee.id,
-                    $or: [{
-                        date: {
-                            $exists: true,
-                            $gte: date.startOf('day').subtract(lastDays, 'day').toDate(),
-                            $lt: date.endOf('day').toDate()
-                        }
-                    }, {
-                        toDate: {
-                            $exists: true,
-                            $gte: moment().startOf('day').subtract(lastDays, 'day').toDate(),
-                            $lt: moment().endOf('day').toDate()
-                        }
-                    }]
-                }).then(leaves => {
-                    if (!leaves || (leaves && leaves.length == 0)) {
-                        employees.push(team.employee)
-                    }
-                    next()
-                }).catch()
-            }, (err) => {
-                let totalEmps = employees.length
-                if (totalEmps == 0) return resolve(null)
-                return resolve({
-                    totalEmps: employees.length,
-                    supervisor: teams[0].supervisor,
-                    employees: employees,
-                    lastDays: lastDays
-                })
-            })
-        }).catch(err => {
-            reject(err)
+            filterEmployee = true
+        }
+
+        if (query.employeeId) {
+            employeeQuery._id = query.employeeId
+            filterEmployee = true
+        }
+
+        if (filterEmployee) {
+            where.employee = {
+                $in: await db.employee.find(employeeQuery).select('_id')
+            }
+        }
+    }
+
+    if (query.status) {
+        where.status = {
+            $in: [query.status]
+        }
+    } else {
+        where.status = 'approved'
+    }
+
+    if (query.leaveType) {
+        where.leaveType = query.leaveType
+    }
+
+    let total = await db.leave.find(where).count()
+    let entities
+    if (pager) {
+        entities = await db.leave.find(where).skip(pager.skip).limit(pager.limit).populate('leaveType employee').sort({
+            date: -1
         })
-    })
+    } else {
+        entities = await db.leave.find(where).populate('leaveType employee').sort({
+            date: -1
+        })
+    }
+
+    return {
+        items: entities,
+        count: total
+    }
+}
+
+exports.remove = async (id, context) => {
+    let leave = await db.leave.findById(id)
+    let leaveBalance = await leaveBalances.get({
+        employee: leave.employee,
+        leaveType: leave.leaveType
+    }, context)
+    leaveBalance.units = leaveBalance.units + leave.units
+    await leaveBalance.save()
+    await db.leave.remove({ _id: id })
+}
+
+exports.update = async (id, model, context) => {
+    let data = {
+        status: model.status, // 'approved', 'cancelled', 'rejected'
+        comment: model.comment
+    }
+
+    let leave = await db.leave.findById(id)
+        .populate('leaveType')
+        .populate({
+            model: 'employee',
+            path: 'employee',
+            populate: {
+                model: 'shiftType',
+                path: 'shiftType'
+            }
+        })
+    if (leave.status === data.status) {
+        throw new Error(`status is already ${leave.status}`)
+    }
+    leave.status = data.status
+    leave.comment = data.comment
+    await leave.save()
+
+    if (leave.status === 'rejected' || leave.status === 'cancelled') {
+        let leaveBalance = await leaveBalances.get({
+            employee: leave.employee,
+            leaveType: leave.leaveType
+        }, context)
+        leaveBalance.units = leaveBalance.units + leave.units
+        await leaveBalance.save()
+    }
+
+    let action
+    switch (leave.status) {
+        case 'approved':
+            action = 'approve'
+            break
+        case 'rejected':
+            action = 'reject'
+            break
+        case 'cancelled':
+            action = 'cancel'
+            break
+        default:
+            break
+    }
+
+    return offline.queue('leave', action, leave, context)
 }

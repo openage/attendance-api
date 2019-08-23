@@ -1,7 +1,6 @@
 'use strict'
-let _ = require('underscore')
 
-exports.toModel = entity => {
+exports.toModel = (entity, context) => {
     var model = {
         id: entity.id || entity._id.toString(),
         name: entity.name,
@@ -15,7 +14,6 @@ exports.toModel = entity => {
         picUrl: entity.picUrl === '' ? null : entity.picUrl,
         email: entity.email,
         phone: entity.phone,
-        tags: [],
         totalLeaveBalance: entity.totalLeaveBalance,
         userType: entity.userType || 'normal',
         absentDays: entity.absentDays,
@@ -44,7 +42,7 @@ exports.toModel = entity => {
         }
     }
     model.abilities = {}
-    if (!_.isEmpty(entity.abilities)) {
+    if (entity.abilities) {
         for (var key in entity._doc.abilities) {
             model.abilities[key] = entity.abilities[key]
         }
@@ -56,19 +54,8 @@ exports.toModel = entity => {
                 id: item.id,
                 status: item.status
             } : {
-                id: item.toString()
-            }
-        })
-    }
-
-    if (entity.tags && entity.tags.length) {
-        model.tags = entity.tags.map(item => {
-            return item._doc ? {
-                id: item.id,
-                name: item.name
-            } : {
-                id: item.toString()
-            }
+                    id: item.toString()
+                }
         })
     }
 
@@ -131,7 +118,7 @@ exports.toModel = entity => {
 
     model.leaveBalances = []
     if (entity.leaveBalances) {
-        _.each(entity.leaveBalances, leaveBalance => {
+        entity.leaveBalances.forEach(leaveBalance => {
             model.leaveBalances.push({
                 leaveType: {
                     id: leaveBalance.leaveType.id,
@@ -242,16 +229,16 @@ exports.toModel = entity => {
     return model
 }
 
-exports.toFullModel = entity => {
-    let data = exports.toModel(entity)
+exports.toFullModel = (entity, context) => {
+    let data = exports.toModel(entity, context)
     data.token = entity.token
     return data
 }
 
-exports.toSearchModel = entities => {
+exports.toSearchModel = (entities, context) => {
     return entities.map(entity => {
         if (entity) {
-            return exports.toModel(entity)
+            return exports.toModel(entity, context)
         }
     })
 }
