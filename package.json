@@ -55,7 +55,7 @@
         "mathjs": "^3.16.5",
         "moment": "^2.24.0",
         "mongodb": "^2.2.36",
-        "mongoose": "^4.11.3",
+        "mongoose": "^5.7.8",
         "mongoose-find-one-or-create": "^0.2.0",
         "morgan": "^1.9.1",
         "msexcel-builder": "0.0.2",
