@@ -12,6 +12,7 @@ exports.toModel = (entity, context) => {
         division: entity.division,
         picData: entity.picData,
         picUrl: entity.picUrl === '' ? null : entity.picUrl,
+        profile: entity.profile,
         email: entity.email,
         phone: entity.phone,
         totalLeaveBalance: entity.totalLeaveBalance,
@@ -50,10 +51,11 @@ exports.toModel = (entity, context) => {
 
     if (entity.devices && entity.devices.length) {
         model.devices = entity.devices.map((item) => {
-            return item._doc ? {
-                id: item.id,
-                status: item.status
-            } : {
+            return item._doc
+                ? {
+                    id: item.id,
+                    status: item.status
+                } : {
                     id: item.toString()
                 }
         })

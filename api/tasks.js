@@ -4,6 +4,7 @@ const service = require('../services/tasks')
 const mapper = require('../mappers/task')
 
 const offline = require('@open-age/offline-processor')
+const pager = require('../helpers/paging')
 
 exports.create = async (req) => {
     const task = await service.create(req.body, req.context)
@@ -73,12 +74,23 @@ exports.search = async (req) => {
         }
     }
 
-    const tasks = await service.search(query, req.context)
+    let paging = pager.extract(req)
+    const result = await service.search(query, paging, req.context)
 
-    return mapper.toSearchModel(tasks, req.context)
+    let page = {
+        items: mapper.toSearchModel(result.items),
+        total: result.count
+    }
+
+    if (paging) {
+        page.pageNo = paging.pageNo
+        page.pageSize = paging.limit
+    }
+
+    return page
 }
 
-exports.update = async (req, res) => {
+exports.update = async (req) => {
     const task = await service.update(req.params.id, req.body, req.context)
 
     return mapper.toModel(task, req.context)

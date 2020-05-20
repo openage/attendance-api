@@ -49,13 +49,24 @@ const get = async (query, context) => {
     return null
 }
 
-const search = async (query, context) => {
-    context.logger.silly('query')
+const search = async (query, paging, context) => {
+    context.logger.start('search')
     query.organization = context.organization
 
-    const items = await db.task.find(query)
+    const count = await db.task.find(query).count()
 
-    return items
+    var items = []
+
+    if (paging) {
+        items = await db.task.find(query).skip(paging.skip).limit(paging.limit)
+    } else {
+        items = await db.task.find(query)
+    }
+
+    return {
+        count: count,
+        items: items
+    }
 }
 
 const update = async (id, model, context) => {

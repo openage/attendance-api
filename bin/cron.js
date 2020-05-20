@@ -5,6 +5,7 @@ process.env.APP = 'cron'
 
 const fs = require('fs')
 const logger = require('@open-age/logger')('cron')
+logger.info(`environment: ${process.env.NODE_ENV}`)
 
 require('../helpers/string')
 require('../helpers/number')

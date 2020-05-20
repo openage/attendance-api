@@ -1,10 +1,11 @@
 const db = require('../models')
 const taskService = require('./tasks')
+const userService = require('./users')
 
 exports.create = async (model, context) => {
     const log = context.logger.start('create')
 
-    let user = await db.employee.findById(model.user.id)
+    let user = await userService.get(model.user, context)
     const device = await db.device.findById(model.device.id)
     let entity = await db.biometric.findOne({
         device: device,
@@ -19,7 +20,8 @@ exports.create = async (model, context) => {
         entity = new db.biometric({
             device: device,
             user: model.user.id,
-            organization: context.organization
+            organization: context.organization,
+            tenant: context.tenant
         })
         await entity.save()
     }
@@ -94,15 +96,10 @@ exports.search = async (query, paging, context) => {
         organization: context.organization
     }
 
-    if (query.userId || query.user) {
-        where.user = query.userId || query.user.id
-    } else if (query.userCode) {
-        where.user = await db.employee.findOne({
-            code: query.userCode,
-            organization: context.organization
-        })
+    if (query.userId || query.userCode || query.user) {
+        where.user = await userService.get(query.userId || query.userCode || query.user.id, context)
     } else if (query.userStatus && query.userStatus === 'temp') {
-        let users = await db.employee.find({
+        let users = await db.user.find({
             status: 'temp',
             organization: context.organization
         })
@@ -160,19 +157,19 @@ exports.updateCode = async (user, newCode, context) => {
         await item.save()
 
         switch (item.status) {
-        case 'enabled':
-            await takeAction(item, 'enable', {
-                multiple: true
-            }, context)
-            break
-        case 'disabled':
-            await takeAction(item, 'enable', {
-                multiple: true
-            }, context)
-            await takeAction(item, 'disable', {
-                multiple: true
-            }, context)
-            break
+            case 'enabled':
+                await takeAction(item, 'enable', {
+                    multiple: true
+                }, context)
+                break
+            case 'disabled':
+                await takeAction(item, 'enable', {
+                    multiple: true
+                }, context)
+                await takeAction(item, 'disable', {
+                    multiple: true
+                }, context)
+                break
         }
     }
 }
@@ -304,7 +301,7 @@ const takeAction = async (biometric, action, options, context) => {
     const log = context.logger.start(`services/biometrics:action:${action}`)
 
     if (!biometric.code) {
-        throw new Error(`Employee: ${biometric.user.code} does not have biometric code`)
+        throw new Error(`User: ${biometric.user.code} does not have biometric code`)
     }
 
     options = options || {}
@@ -319,24 +316,24 @@ const takeAction = async (biometric, action, options, context) => {
 
         // should fetch from only one m/c - cancel other fetches
         switch (action) {
-        case 'fetch':
-            where.action = 'fetch'
-            break
-        case 'enable':
-            where.device = biometric.device
-            // where.action = { $in: ['remove', 'disable'] }
-            break
-        case 'disable':
-            where.device = biometric.device
-            // where.action = { $in: ['enable', 'fetch', 'remove'] }
-            break
-        case 'remove':
-            where.device = biometric.device
-            // where.action = { $in: ['enable', 'fetch', 'disable'] }
-            break
+            case 'fetch':
+                where.action = 'fetch'
+                break
+            case 'enable':
+                where.device = biometric.device
+                // where.action = { $in: ['remove', 'disable'] }
+                break
+            case 'disable':
+                where.device = biometric.device
+                // where.action = { $in: ['enable', 'fetch', 'remove'] }
+                break
+            case 'remove':
+                where.device = biometric.device
+                // where.action = { $in: ['enable', 'fetch', 'disable'] }
+                break
         }
 
-        let tasksToCancel = await taskService.search(where, context)
+        let tasksToCancel = (await taskService.search(where, null, context)).items
 
         if (action === 'fetch' && tasksToCancel && tasksToCancel.length) {
             return

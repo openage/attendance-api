@@ -6,7 +6,7 @@ exports.run = function (req) {
         throw new Error('file is required')
     }
 
-    return actionHandler.queue('timeLog', 'file', {
+    return offline.queue('timeLog', 'file', {
         filePath: req.file
     }, req.context)
 }

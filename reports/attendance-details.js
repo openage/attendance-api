@@ -90,16 +90,22 @@ exports.data = async (params, context) => {
     }, context)
     let employees = monthlysummary.items
 
-    const lastDay = moment(params.dates.from).daysInMonth()
+    let lastDay = moment(params.dates.from).daysInMonth()
 
     let serialNo = 1
     let data = []
     log.silly('arranging data')
     for (let id of employees) {
+        let day = 0
+        if (params.dates.to) {
+            day = moment(params.dates.from).date()
+            lastDay = moment(params.dates.to).date()
+        }
         log.silly(`getting monthSummary by id: ${id.toString()}`)
         let employee = await db.monthSummary.findById(id)
         employee.attendances = employee.attendances || []
-        for (var day = 1; day <= lastDay; day++) {
+        let dayCount = 0;
+        for (day; day <= lastDay; day++) {
             let date = moment(params.dates.from).set('date', day).toDate()
             let leaveSummary = leaveService.getDaySummary(employee.leaves, date, context)
             let attendance = employee.attendances.find(i => dates.date(i.ofDate).isSame(date))
@@ -144,7 +150,7 @@ exports.data = async (params, context) => {
                 }
             }
 
-            if (day === 1) {
+            if (dayCount === 0) {
                 row.serialNo = serialNo
                 row.code = employee.employeeModel.code
                 row.biometricCode = employee.employeeModel.biometricCode
@@ -152,6 +158,7 @@ exports.data = async (params, context) => {
             }
 
             data.push(row)
+            dayCount++
         }
         data.push({})
         serialNo = serialNo + 1

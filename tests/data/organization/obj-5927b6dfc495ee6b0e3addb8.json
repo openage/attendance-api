@@ -1,0 +1,31 @@
+{
+    "_id": "5927b6dfc495ee6b0e3addb8",
+    "code": "test",
+    "name": "test name",
+    "externalUrl": "http://ems.mindfulsas.com/api/employees/${id}",
+    "activationKey": "84123dc0-5370-11e7-a6e1-1df24bdfb8bc",
+    "devicesVersion": "6",
+    "devices": [],
+    "channels": [],
+    "communicationApps": {
+        "chat": {
+            "config": {
+                "webhookUrl": "mdgsdg.slack.com"
+            },
+            "type": {
+                "category": "chat",
+                "name": "slack",
+                "providerName": "slack",
+                "picUrl": "http://res.cloudinary.com/dkws91cqo/image/upload/v1503475390/slack_bayd8k.png",
+                "description": "Use Slack to notify supervisor of employee",
+                "parameters": [{
+                    "name": "webhookUrl",
+                    "title": "Webhook Url",
+                    "type": "string",
+                    "description": "Webhook Url to Connect with Slack",
+                    "expectedValues": []
+                }]
+            }
+        }
+    }
+}

@@ -2,18 +2,34 @@ const db = require('../models')
 const categoryService = require('./categories')
 
 const set = async (entity, model, context) => {
+    if (model.code && entity.code !== model.code) {
+        let entity = await this.get(model.code, context)
+
+        if (entity) {
+            throw new Error(`code '${model.code}' already exists`)
+        }
+
+        entity.code = model.code.toLowerCase()
+    }
+
+    if (model.manufacturer) {
+        entity.manufacturer = model.manufacturer
+    }
+
+    if (model.model) {
+        entity.model = model.model
+    }
+
     if (model.category) {
         entity.category = await categoryService.get(model.category, context)
     }
 
-    if (model.picUrl) {
-        entity.picUrl = model.picUrl
+    if (model.pic) {
+        entity.pic = {
+            url: model.pic.url,
+            thumbnail: model.pic.thumbnail
+        }
     }
-
-    if (model.picData) {
-        entity.picData = model.picData
-    }
-
     return entity
 }
 
@@ -30,34 +46,24 @@ exports.create = async (model, context) => {
         throw new Error('category is required')
     }
 
-    let data = {
-        manufacturer: model.manufacturer,
-        model: model.model
+    let entity = await exports.get(model, context)
 
-    }
-
-    let machine = await exports.get(model, context)
-
-    if (machine) {
+    if (entity) {
         throw new Error('device already exist')
     }
 
-    machine = new db.machine({
-        manufacturer: data.manufacturer,
-        model: data.model,
+    entity = new db.machine({
         tenant: context.tenant
-    }, data)
+    })
 
-    await set(machine, model, context)
-
-    await machine.save()
-
-    return machine
+    await set(entity, model, context)
+    await entity.save()
+    return entity
 }
 
 exports.update = async (id, model, context) => {
     let entity = await exports.get(id, context)
-    await set(entity, model)
+    await set(entity, model, context)
     await entity.save()
     return entity
 }
@@ -71,12 +77,12 @@ exports.get = async (query, context) => {
         if (query.isObjectId()) {
             return db.machine.findById(query)
         }
-        where['code'] = query
+        where['code'] = query.toLowerCase()
         return db.machine.findOne(where)
     } else if (query.id) {
         return db.machine.findById(query.id)
     } else if (query.code) {
-        where['code'] = query.code
+        where['code'] = query.code.toLowerCase()
         return db.machine.findOne(where)
     }
 }

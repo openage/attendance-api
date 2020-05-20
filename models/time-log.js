@@ -6,6 +6,10 @@ module.exports = {
         enum: ['checkIn', 'checkOut']
     },
     ignore: Boolean,
+    status: {
+        type: String,
+        enum: ['draft', 'submitted', 'ignored', 'canceled']
+    },
     device: { type: mongoose.Schema.Types.ObjectId, ref: 'device' },
     employee: { type: mongoose.Schema.Types.ObjectId, ref: 'employee' },
     time: Date,
@@ -19,7 +23,7 @@ module.exports = {
     },
     source: {
         type: String,
-        enum: ['biometricDevice', 'androidDevice', 'iosDevice', 'byAdmin', 'wifi', 'system'],
+        enum: ['biometricDevice', 'androidDevice', 'iosDevice', 'byAdmin', 'wifi', 'system', 'self'],
         default: 'biometricDevice'
     },
     attendanceId: String,

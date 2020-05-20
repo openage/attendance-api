@@ -57,7 +57,7 @@ exports.toModel = (entity, context) => {
             }
         }
     }
-    if (entity.decision) {
+    if (entity.decision && context && context.req && context.req.columns && context.req.columns.explain) {
         const explainFormat = (item) => {
             let explain = {
                 checkInLimit: moment(item.checkInLimit).format('HH:mm DD-MM-YYYY'),
@@ -83,6 +83,6 @@ exports.toModel = (entity, context) => {
 
 exports.toSearchModel = (entities, context) => {
     return entities.map(entity => {
-        return exports.toSearchModel(entities, context)
+        return exports.toModel(entity, context)
     })
 }

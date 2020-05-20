@@ -4,28 +4,42 @@
         "host": "mongodb://localhost:27017/oa_attendance"
     },
     "webServer": {
-        "url": "http://localhost:3008",
+        "url": "https://dev.openage.in/ams",
         "port": 3008
     },
     "queueServer": {
         "disabled": true
     },
-    "system": {
+    "support": {
         "name": "Open Age",
-        "emailId": "no_reply@openage.in"
+        "email": "support@openage.in"
     },
-    "auth": {
-        "provider": "directory"
+    "providers": {
+        "directory": {
+            "url": "https://dev.openage.in/directory/api"
+        },
+        "gateway": {
+            "url": "https://dev.openage.in/gateway/api"
+        },
+        "send-it": {
+            "url": "https://dev.openage.in/sendIt/api"
+        },
+        "geolib": {
+            "url": "https://maps.googleapis.com/maps/api/geocode/json",
+            "milesUrl": "https://maps.googleapis.com/maps/api/distancematrix/json?units=${units}&origins=${origins}&destinations=${destinations}&key=${key}",
+            "localityUrl": "https://maps.googleapis.com/maps/api/geocode/json?latlng=${latlng}&key=${key}",
+            "key": "todo",
+            "units": "metric",
+            "parameters": {
+                "noPaging": true,
+                "key": "todo"
+            },
+            "response": {
+                "field": "data"
+            }
+        }
     },
-    "storage": {
-        "provider": "drive"
-    },
-    "message": {
-        "provider": "send-it"
-    },
-    "location": {
-        "provider": "googleLocation"
-    },
+
     "sync": {
         "serviceVersion": "1"
     },
@@ -37,20 +51,9 @@
             "colorize": true
         }
     },
-    "providers": {
-        "googleLocation": {
-            "url": "https://maps.googleapis.com/maps/api/geocode/json",
-            "googleKey": "placeholder"
-        },
-        "directory": {
-            "url": "http://localhost:3001/api"
-        },
-        "send-it": {
-            "url": "http://localhost:3002/api"
-        },
-        "drive": {
-            "url": "http://localhost:3003/api"
-        }
+    "folders": {},
+    "formats": {
+        "date": "DD-MM-YYYY"
     },
     "organization": {
         "timeZone": "IST",

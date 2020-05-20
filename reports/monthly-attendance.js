@@ -27,9 +27,9 @@ module.exports = async (params, context) => {
 
     var orgDetails = {
         orgName: context.organization.name,
-        downloaderName: context.employee.name,
-        downloaderEmail: context.employee.email,
-        downloaderPhone: context.employee.phone
+        downloaderName: context.user.name,
+        downloaderEmail: context.user.email,
+        downloaderPhone: context.user.phone
     }
     if (params.employee) {
         if (params.employee.name) {
@@ -85,12 +85,16 @@ module.exports = async (params, context) => {
             code: 1,
             designation: 1
         }
+    }, {
+        $sort: { code: 1 }
+    },
+    {
+        $collation: { locale: 'en_US', numericOrdering: true }
     }])
 
-    employees = employees.sort((a, b) => {
-        return a.code - b.code
-    })
-
+    // employees = employees.sort((a, b) => {
+    //     return Number(a.code) - Number(b.code)
+    // })
     await Promise.each(employees, async (employee) => {
         await Promise.all([
             db.leave.find({

@@ -4,7 +4,11 @@ exports.toModel = (entity, context) => {
     var model = {
         id: entity.id,
         date: entity.date,
-        name: entity.name
+        name: entity.name,
+        description: entity.description,
+        departments: entity.departments,
+        divisions: entity.divisions,
+        status: entity.status
     }
 
     return model

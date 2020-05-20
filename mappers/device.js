@@ -15,6 +15,14 @@ exports.toModel = (entity, context) => {
         lastSeen: entity.lastSeen
     }
 
+    if (entity.location) {
+        model.location = {
+            coordinates: entity.location.coordinates,
+            name: entity.location.name,
+            description: entity.location.description
+        }
+    }
+
     let fromNow = moment(new Date()).diff(entity.lastSeen, 'm')
 
     if (fromNow > 10 && entity.status === 'online') {

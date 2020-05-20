@@ -48,8 +48,8 @@ module.exports = async (level, message, meta, context) => {
                 model.attendance = context.attendance.id || context.attendance
             }
 
-            if (context.employee) {
-                model.employee = context.employee.id || context.employee
+            if (context.user) {
+                model.employee = context.user.id || context.user
             }
 
             if (context.user) {

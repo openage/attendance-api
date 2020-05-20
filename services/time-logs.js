@@ -7,6 +7,8 @@ const biometrics = require('./biometrics')
 const moment = require('moment')
 const dates = require('../helpers/dates')
 
+const employeeService = require('./employee-getter')
+
 const timeLogType = {
     checkIn: 'checkIn',
     checkOut: 'checkOut'
@@ -343,7 +345,8 @@ exports.create = async (model, context) => {
             source: model.source,
             location: model.location,
             isUpdated: context.online,
-            organization: context.organization
+            organization: context.organization,
+            tenant: context.tenant
         })
         await timeLog.save()
         log.debug(`new entry created with id: ${timeLog.id}`)
@@ -373,4 +376,40 @@ exports.update = async (id, model, context) => {
     await timeLog.save()
     await offline.queue('timeLog', 'update', timeLog, context)
     return timeLog
+}
+
+exports.search = async (param, paging, context) => {
+    context.logger.start('search')
+    let query = {
+        organization: context.organization,
+        employee: context.user
+    }
+
+    if (param.employeeId || param.user) {
+        query.employee = await employeeService.get(param.employeeId || param.user, context)
+    }
+
+    if (param.attendanceId || param.attendance) {
+        query.attendanceId = param.attendanceId || param.attendance.id
+    } else {
+        query.time = {
+            $gte: dates.date(param.fromDate).bod(),
+            $lt: dates.date(param.fromDate).eod()
+        }
+    }
+
+    const count = await db.timeLog.find(query).count()
+
+    var items = []
+
+    if (paging) {
+        items = await db.timeLog.find(query).skip(paging.skip).limit(paging.limit)
+    } else {
+        items = await db.timeLog.find(query)
+    }
+
+    return {
+        count: count,
+        items: items
+    }
 }

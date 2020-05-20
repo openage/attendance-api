@@ -1,14 +1,15 @@
 'use strict'
-
 const leaveTypes = require('./leave-types')
 const leaveBalances = require('./leave-balances')
-
+const moment = require('moment')
 const dates = require('../helpers/dates')
 const offline = require('@open-age/offline-processor')
 const db = require('../models')
-
 const employeeService = require('./employees')
+const employeeGetterService = require('./employee-getter')
 const attendanceService = require('../services/attendances')
+
+const populate = 'leaveType employee'
 
 exports.create = async (model, context) => {
     let log = context.logger.start('services/leaves:create')
@@ -39,10 +40,10 @@ exports.create = async (model, context) => {
 
     if (!model.employee) {
         model.employee = {
-            id: context.employee.id
+            id: context.user.id
         }
     }
-    let employee = await employeeService.get(model.employee, context)
+    let employee = await employeeGetterService.get(model.employee, context)
 
     if (!employee) {
         throw new Error('employee not found')
@@ -71,14 +72,16 @@ exports.create = async (model, context) => {
         status = 'approved'
     }
 
-    if (context.hasPermission(['admin', 'superadmin']) && employee.id !== context.employee.id) {
+    // status = "submitted"
+
+    if (context.hasPermission(['organization.admin', 'organization.hr', 'admin', 'superadmin']) && employee.id !== context.user.id) {
         log.info(`approving the leave as it is by admin`)
         status = 'approved'
     }
 
     let leaveType = await leaveTypes.get((model.type || model.leaveType), context)
     if (!leaveType) {
-        throw new Error(`LeaveType not Exists`)
+        throw new Error(`Leave Type not Exists`)
     }
 
     let leaveBalance = await leaveBalances.get({
@@ -108,10 +111,10 @@ exports.create = async (model, context) => {
         }
     }
 
-    let leaveDays = model.days;
+    let leaveDays = model.days
 
-    for (let i = 0; i < model.days; i++) {
-        let attendance = await attendanceService.getAttendanceByDate(moment(fromDate).add(i, 'day').startOf('day').toDate(), employee, { create: true }, context)
+    for (const leaveDate of dates.date(fromDate).dates(model.days)) {
+        let attendance = await attendanceService.getAttendanceByDate(leaveDate, employee, { create: true }, context)
         if (attendance) {
             if (attendance.status !== 'absent') {
                 leaveDays = leaveDays - 1
@@ -148,20 +151,15 @@ exports.create = async (model, context) => {
         bot: model.bot,
         isPlanned: fromDate > new Date(),
         reason: model.reason,
-        Ext_id: model.externalId,
-        organization: context.organization
+        externalId: model.externalId,
+        organization: context.organization,
+        tenant: context.tenant
     }).save())
 
     if (leave.status === 'approved') {
-        await offline.queue('leave', 'approve', {
-            id: leave.id,
-            bot: model.bot
-        }, context)
+        await offline.queue('leave', 'approve', leave, context)
     } else {
-        await offline.queue('leave', 'submit', {
-            id: leave.id,
-            bot: model.bot
-        }, context)
+        await offline.queue('leave', 'submit', leave, context)
     }
 
     return leave
@@ -230,7 +228,7 @@ exports.get = async (query) => {
         return db.leave.findById(query.id).populate('leaveType')
     }
 
-    throw new Error(`invalid query '${query}'`)
+    return
 }
 
 exports.search = async (query, pager, context) => {
@@ -238,73 +236,106 @@ exports.search = async (query, pager, context) => {
         organization: context.organization
     }
 
-    let date = dates.date(query.date)
-    if (query.from && query.till) {
-        where.date = {
-            $gte: dates.date(query.from).bod(),
-            $lte: dates.date(query.till).eod()
-        }
-    } else {
-        where.date = {
-            $gte: date.bom(),
-            $lte: date.eom()
+    if (query.date) {
+        let date = dates.date(query.date)
+        if (query.from && query.till) {
+            where.date = {
+                $gte: dates.date(query.from).bod(),
+                $lte: dates.date(query.till).eod()
+            }
+        } else {
+            where.date = {
+                $gte: date.bom(),
+                $lte: date.eom()
+            }
         }
     }
 
-    if (!context.hasPermission(['admin', 'superadmin'])) {
-        where.employee = context.employee.id
+    if (!context.hasPermission(['organization.supervisor', 'organization.admin', 'organization.superadmin'])) {
+        where.employee = context.user
     } else {
         let employeeQuery = {
             organization: context.organization
         }
+
         let filterEmployee = false
 
-        if (query.supervisorId) {
-            employeeQuery.supervisor = query.supervisorId
+        if (!context.hasPermission(['organization.admin', 'organization.superadmin'])) {
+            employeeQuery.supervisor = context.user
+            filterEmployee = true
+        } else if (query.supervisorId || query.supervisor) {
+            employeeQuery.supervisor = await employeeGetterService.get(query.supervisorId || query.supervisor, context)
             filterEmployee = true
         }
 
-        if (query.name) {
-            employeeQuery.name = {
-                $regex: query.name,
-                $options: 'i'
+        if (query.employeeId || query.employeeCode || query.employee || query.user) {
+            let user = await employeeGetterService.get(query.employeeId || query.employeeCode || query.employee || query.user, context)
+
+            if (user) {
+                employeeQuery.id = user.id
+            } else {
+                return {
+                    items: [],
+                    count: 0
+                }
             }
 
             filterEmployee = true
         }
 
-        if (query.employeeId) {
-            employeeQuery._id = query.employeeId
+        if (query.name) {
+            employeeQuery.$or = [{
+                'profile.firstName': {
+                    $regex: query.name,
+                    $options: 'i'
+                }
+            }, {
+                'profile.lastName': {
+                    $regex: query.name,
+                    $options: 'i'
+                }
+            }]
+            // employeeQuery.name = {
+            //     $regex: query.name,
+            //     $options: 'i'
+            // }
             filterEmployee = true
         }
 
         if (filterEmployee) {
-            where.employee = {
-                $in: await db.employee.find(employeeQuery).select('_id')
+            if (employeeQuery.id) {
+                where.employee = employeeQuery.id
+            } else {
+                where.employee = {
+                    $in: await db.employee.find(employeeQuery).select('_id')
+                }
             }
         }
     }
 
     if (query.status) {
-        where.status = {
-            $in: [query.status]
+        if (query.status.indexOf(',') > -1) {
+            query.status = query.status.split(',')
         }
-    } else {
-        where.status = 'approved'
+        where.status = {
+            $in: query.status
+        }
+        // } else {
+        //     where.status = 'approved'
     }
 
     if (query.leaveType) {
-        where.leaveType = query.leaveType
+        where.leaveType = await leaveTypes.get(query.leaveType, context)
     }
 
     let total = await db.leave.find(where).count()
     let entities
     if (pager) {
-        entities = await db.leave.find(where).skip(pager.skip).limit(pager.limit).populate('leaveType employee').sort({
+        entities = await db.leave.find(where).skip(pager.skip).limit(pager.limit).populate(populate).sort({
             date: -1
         })
     } else {
-        entities = await db.leave.find(where).populate('leaveType employee').sort({
+        entities = await db.leave.find(where).populate(populate).sort({
             date: -1
         })
     }
@@ -372,6 +403,6 @@ exports.update = async (id, model, context) => {
         default:
             break
     }
-
-    return offline.queue('leave', action, leave, context)
+    offline.queue('leave', action, leave, context)
+    return leave
 }

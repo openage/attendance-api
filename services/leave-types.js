@@ -1,7 +1,16 @@
 const db = require('../models')
 const offline = require('@open-age/offline-processor')
 
-const set = (entity, model) => {
+const set = async (entity, model, context) => {
+    if (model.code && entity.code !== model.code) {
+        let exists = await this.get(model.code, context)
+
+        if (exists) {
+            throw new Error(`code '${model.code}' already exists`)
+        }
+        entity.code = model.code.toLowerCase()
+    }
+
     if (model.name) {
         entity.name = model.name
     }
@@ -25,15 +34,16 @@ const set = (entity, model) => {
         entity.monthlyLimit = model.monthlyLimit
     }
 
-    if (model.periodicity) {
+    let trigger = model.periodicity || model.trigger
+    if (trigger) {
         entity.periodicity = entity.periodicity || {}
 
-        if (model.periodicity.value) {
-            entity.periodicity.value = model.periodicity.value
+        if (trigger.value) {
+            entity.periodicity.value = trigger.value
         }
 
-        if (model.periodicity.type) {
-            entity.periodicity.type = model.periodicity.type
+        if (trigger.type) {
+            entity.periodicity.type = trigger.type
         }
     }
 
@@ -52,10 +62,7 @@ exports.get = async (query, context) => {
             return db.leaveType.findById(query)
         } else {
             return (db.leaveType.findOne({
-                code: {
-                    $regex: '^' + query + '$', // leaveType name
-                    $options: 'i'
-                },
+                code: query.toLowerCase(),
                 organization: context.organization
             }))
         }
@@ -65,13 +72,10 @@ exports.get = async (query, context) => {
         return db.leaveType.findById(query.id)
     }
     if (query.code) {
-        return (db.leaveType.findOne({
-            code: {
-                $regex: '^' + query.code + '$', // leaveType name
-                $options: 'i'
-            },
+        return db.leaveType.findOne({
+            code: query.code.toLowerCase(),
             organization: context.organization
-        }))
+        })
     }
 
     if (query.name) {
@@ -88,12 +92,7 @@ exports.get = async (query, context) => {
 }
 
 exports.create = async (model, context) => {
-    model.code = model.code.toLowerCase()
-    let entity = await db.leaveType.findOne({
-        code: model.code,
-        organization: context.organization.id
-    })
-
+    let entity = await this.get(model.code, context)
     if (entity) {
         throw new Error(`code '${model.code}' already exists`)
     }
@@ -102,11 +101,11 @@ exports.create = async (model, context) => {
     model.periodicity.type = model.periodicity.type || 'manual'
 
     let leaveType = new db.leaveType({
-        organization: context.organization
+        organization: context.organization,
+        tenant: context.tenant
     })
 
-    set(leaveType, model)
-
+    await set(leaveType, model, context)
     await leaveType.save()
     await offline.queue('leave-type', 'create', leaveType, context)
 
@@ -114,26 +113,8 @@ exports.create = async (model, context) => {
 }
 
 exports.update = async (id, model, context) => {
-    model.periodicity = model.periodicity || model.trigger || {}
-
     const leaveType = await db.leaveType.findById(id)
-
-    if (model.code && leaveType.code !== model.code) {
-        model.code = model.code.toLowerCase()
-        let entity = await db.leaveType.findOne({
-            code: model.code,
-            organization: context.organization.id
-        })
-
-        if (entity) {
-            throw new Error(`code '${model.code}' already exists`)
-        }
-
-        leaveType.code = model.code
-    }
-
-    set(leaveType, model)
-
+    await set(leaveType, model, context)
     await leaveType.save()
     await offline.queue('leave-type', 'update', leaveType, context)
 

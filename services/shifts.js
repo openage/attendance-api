@@ -48,7 +48,9 @@ exports.getDayStatus = async (shiftType, date) => {
     let todaysDate = dates.date(date).bod()
 
     let holiday = await db.holiday.findOne({
+        status: 'active',
         organization: shiftType.organization,
+        tenant: shiftType.tenant,
         date: todaysDate
     })
 
@@ -59,7 +61,7 @@ exports.getDayStatus = async (shiftType, date) => {
         }
     }
     return {
-        status: await exports.getShiftStatus(shiftType, date)
+        status: await this.getShiftStatus(shiftType, date)
     }
 }
 
@@ -87,7 +89,7 @@ const getOrCreate = async (shiftType, date, fromDate, isDate, toDate, context) =
         return shiftTypes.getDayStatus(shiftType, date).then(status => {
             return new db.shift({
                 shiftType: shiftType,
-                date: date,
+                date: dates.date(date).setTime(shiftType.startTime),
                 status: status
             }).save().then(shift => {
                 log.debug(`new ${shiftType.name} shift (id: '${shift.id}') created for date: '${date}'`)
@@ -175,7 +177,7 @@ exports.getSummary = (shift, context) => {
 }
 
 exports.reset = async (shift, context) => {
-    const dayStatus = await exports.getDayStatus(shift.shiftType, shift.date, context)
+    const dayStatus = await this.getDayStatus(shift.shiftType, shift.date, context)
     if (shift.status !== dayStatus.status) {
         shift.status = dayStatus.status
         await shift.save()
@@ -198,7 +200,7 @@ exports.shiftByShiftType = async (shiftType, date, context) => {
         return shift
     }
 
-    let shiftStatus = await exports.getDayStatus(shiftType, date)
+    let shiftStatus = await this.getDayStatus(shiftType, date)
 
     shift = new db.shift({
         shiftType: shiftType.id || shiftType,

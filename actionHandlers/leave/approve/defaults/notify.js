@@ -1,26 +1,18 @@
 'use strict'
 
 const users = require('../../../../services/employee-getter')
+const userMapper = require('../../../../mappers/user')
 const sendIt = require('@open-age/send-it-client')
 
-const getConfig = (context) => {
-    let config = {
-        action: {
-            type: 'notify-user',
-            priority: 'high',
-            modes: { push: true, email: true }
-        }
+exports.process = async (leave, context) => {
+    let user = await users.get(leave.employee, context)
+
+    if (user.id === context.user.id) {
+        context.logger.debug('skipping message: self approved')
     }
 
-    return config
-}
-
-exports.process = async (leave, context) => {
-    let config = getConfig(context)
-
-    const user = await users.get(leave.employee, context)
-
-    let message = {
+    user = userMapper.toSummary(user, context)
+    await sendIt.dispatch({
         data: {
             leave: {
                 id: leave.id,
@@ -33,25 +25,23 @@ exports.process = async (leave, context) => {
                 },
                 status: leave.status
             },
-            user: {
-                id: user.id,
-                name: user.name,
-                code: user.code,
-                role: { id: user.role.id }
+            user: user
+        },
+        meta: {
+            entity: {
+                id: leave.id,
+                type: 'leave'
             }
         },
-        modes: config.action.modes,
+        template: {
+            code: 'ams-leave-approved'
+        },
+        to: {
+            role: { id: user.role.id }
+        },
         options: {
-            priority: config.action.priority
+            priority: 'high',
+            modes: { push: true, email: true }
         }
-    }
-
-    switch (config.action.type) {
-    case 'notify-user':
-        message.to = user
-        message.template = 'your-leave-was-approved'
-        break
-    }
-
-    await sendIt.dispatch(message, context)
+    }, context)
 }

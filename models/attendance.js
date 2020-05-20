@@ -1,6 +1,9 @@
 'use strict'
 var mongoose = require('mongoose')
+
 module.exports = {
+    // minutes: Number,
+    externalId: String,
     status: {
         type: String,
         enum: ['checkedIn', 'absent', 'present', 'onLeave', 'missSwipe', 'holiday', 'halfday', 'weekOff', 'checked-in-again']

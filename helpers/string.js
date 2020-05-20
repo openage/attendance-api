@@ -1,3 +1,4 @@
+/* eslint-disable no-extend-native */
 'use strict'
 const validator = require('validator')
 // eslint-disable-next-line no-extend-native
@@ -11,7 +12,29 @@ String.prototype.isObjectId = function () {
     return validator.isMongoId(this)
 }
 
-global.toObjectId = id => require('mongoose').Types.ObjectId(id)
+String.prototype.isEmail = function () {
+    return validator.isEmail(this)
+}
+
+String.prototype.isPhone = function () {
+    let code = this
+
+    return code.match(/^\d{10}$/) ||
+        code.match(/^(\+\d{1,3}[- ]?)?\(?([0-9]{3})\)?[-. ]?([0-9]{3})[-. ]?([0-9]{4})$/) ||
+        code.match(/^(\+\d{1,3}[- ]?)?\(?([0-9]{2})\)?[-. ]?([0-9]{4})[-. ]?([0-9]{4})$/)
+}
+
+String.prototype.isMobile = function () {
+    let code = this
+
+    return code.match(/^\d{10}$/) ||
+        code.match(/^(\+\d{1,3}[- ]?)?\(?([0-9]{3})\)?[-. ]?([0-9]{3})[-. ]?([0-9]{4})$/) ||
+        code.match(/^(\+\d{1,3}[- ]?)?\(?([0-9]{2})\)?[-. ]?([0-9]{4})[-. ]?([0-9]{4})$/)
+}
+
+String.prototype.isUUID = function () {
+    return validator.isUUID(this)
+}
 
 // eslint-disable-next-line no-extend-native
 String.prototype.inject = function (data) {
@@ -36,3 +59,4 @@ String.prototype.inject = function (data) {
 
     return template.replace(/\$\{(.+?)\}/g, (match, p1) => getValue(data, p1))
 }
+global.toObjectId = id => require('mongoose').Types.ObjectId(id)

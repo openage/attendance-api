@@ -1,30 +1,19 @@
 'use strict'
+
 const users = require('../../../../services/employee-getter')
+const userMapper = require('../../../../mappers/user')
 const sendIt = require('@open-age/send-it-client')
 
-const getConfig = (context) => {
-    let config = {
-        action: {
-            type: 'notify-supervisor',
-            priority: 'high',
-            modes: { push: true, email: true }
-        }
-    }
-
-    return config
-}
-
 exports.process = async (leave, context) => {
-    let config = getConfig(context)
+    let user = await users.get(leave.employee, context)
 
-    const user = await users.get(leave.employee, context)
-
-    if (user.supervisor.id === context.user.id) {
-        context.logger.debug('not sending message - reaon:action by user')
-        return
+    if (user.id === context.user.id) {
+        context.logger.debug('skipping message: self canceled')
     }
 
-    let message = {
+    user = userMapper.toSummary(user, context)
+
+    await sendIt.dispatch({
         data: {
             leave: {
                 id: leave.id,
@@ -37,25 +26,23 @@ exports.process = async (leave, context) => {
                 },
                 status: leave.status
             },
-            user: {
-                id: user.id,
-                name: user.name,
-                code: user.code,
-                role: { id: user.role.id }
+            user: user
+        },
+        meta: {
+            entity: {
+                id: leave.id,
+                type: 'leave'
             }
         },
-        modes: config.action.modes,
+        template: {
+            code: 'ams-leave-canceled'
+        },
+        to: {
+            role: { id: user.role.id }
+        },
         options: {
-            priority: config.action.priority
+            priority: 'high',
+            modes: { push: true, email: true }
         }
-    }
-
-    switch (config.action.type) {
-    case 'notify-supervisor':
-        message.to = await users.get(user, context)
-        message.template = 'user-canceled-his-leave'
-        break
-    }
-
-    await sendIt.dispatch(message, context)
+    }, context)
 }

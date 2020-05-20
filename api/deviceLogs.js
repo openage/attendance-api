@@ -1,6 +1,22 @@
 'use strict'
-const devices = require('../services/devices')
 
 exports.create = async (req) => {
-    await devices.log(req.body.deviceId, req.body.status, req.body.description, req.context)
+    let level = req.body.status || 'info'
+
+    switch (level) {
+        case 'debug':
+            level = 'debug'
+            break
+        case 'info':
+            level = 'info'
+            break
+        case 'error':
+            level = 'error'
+            break
+        default:
+            level = 'info'
+            break
+    }
+
+    req.context.logger[level](req.body.description, { device: req.body.status })
 }

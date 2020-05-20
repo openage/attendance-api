@@ -3,12 +3,17 @@
 var timeLogMapper = require('./timeLog')
 const shiftTypeMapper = require('./shiftType')
 
+const dates = require('../helpers/dates')
+
 exports.toModel = (entity, context) => {
     var model = {
         id: entity.id || entity._id,
+        externalId: entity.externalId,
         status: entity.status,
         checkIn: entity.checkIn,
+        checkInStatus: entity.checkInStatus,
         checkOut: entity.checkOut,
+        checkOutStatus: entity.checkOutStatus,
         checkOutExtend: entity.checkOutExtend,
         ofDate: entity.ofDate,
 
@@ -21,9 +26,7 @@ exports.toModel = (entity, context) => {
         hours: entity.hours,
         minutes: entity.minutes,
         clocked: entity.clocked,
-        checkInStatus: entity.checkInStatus,
         late: entity.late,
-        checkOutStatus: entity.checkOutStatus,
         early: entity.early,
         overTime: entity.overTime,
         timeLogs: [],
@@ -34,6 +37,12 @@ exports.toModel = (entity, context) => {
         isContinue: entity.isContinue
         // timeStamp: entity.timeStamp
     }
+
+    // if (!dates.date(entity.ofDate).isPast()) {
+    //     if (model.status === 'absent') {
+    //         model.status = ' '
+    //     }
+    // }
 
     if (entity.shift) {
         if (entity.shift._doc || entity.shift.date) {

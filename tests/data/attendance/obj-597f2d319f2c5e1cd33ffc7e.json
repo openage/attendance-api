@@ -1,0 +1,32 @@
+{
+    "_id": "597f2d319f2c5e1cd33ffc7e",
+    "status": "present",
+    "ofDate": "2017-07-18T03:30:00.000Z",
+    "checkIn": "2017-07-18T03:36:08.000Z",
+    "checkOut": "2017-07-18T11:05:38.000Z",
+    "hoursWorked": 8,
+    "shift": {
+        "date": "2017-07-18T03:30:00.000Z",
+        "status": "working",
+        "shiftType": {
+            "code": "gen",
+            "name": "General",
+            "startTime": "2017-07-31T03:30:00.000Z",
+            "endTime": "2017-07-31T12:30:00.000Z",
+            "monday": "full",
+            "tuesday": "full",
+            "wednesday": "full",
+            "thursday": "full",
+            "friday": "full",
+            "saturday": "off",
+            "sunday": "off"
+        }
+    },
+    "employee": {
+        "name": "Test Employee",
+        "code": "10001",
+        "phone": "0000000000",
+        "email": "test-employee@aqua.com"
+    }
+
+}

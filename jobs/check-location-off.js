@@ -6,7 +6,7 @@ const offline = require('@open-age/offline-processor')
 var start = (shiftType, startOn) => {
     var context = {}
     context.organization = {}
-    context.employee = null
+    context.user = null
     context.organization.id = shiftType.organization.toString()
     context.processSync = true
 

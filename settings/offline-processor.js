@@ -21,8 +21,11 @@ exports.configure = function (logger) {
     config.models = {
         attendance: fromService('attendances'),
         timeLog: fromService('time-logs'),
+        leave: fromService('leaves'),
+        device: fromService('devices'),
         leaveType: fromService('leave-types'),
         shiftType: fromService('shift-types'),
+        holiday: fromService('holidays'),
         shift: fromService('shifts'),
         task: fromService('tasks')
     }

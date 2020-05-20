@@ -81,7 +81,7 @@ const setGrace = (shiftType, graceModel, context) => {
     return shiftType
 }
 
-const set = async (shiftType, model, contex) => {
+const set = async (shiftType, model, context) => {
     if (model.name) {
         shiftType.name = model.name
     }

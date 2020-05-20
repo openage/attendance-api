@@ -2,7 +2,7 @@
 const mapper = require('../mappers/effectiveShift')
 const effectiveShifts = require('../services/effectiveShifts')
 const attendanceService = require('../services/attendances')
-
+const employeeService = require('../services/employee-getter')
 const db = require('../models')
 const offline = require('@open-age/offline-processor')
 
@@ -11,9 +11,7 @@ const paging = require('../helpers/paging')
 
 exports.update = async (req) => {
     let date = dates.date(req.body.date).bod()
-    let employee = {
-        id: req.params.id
-    }
+    let employee = await employeeService.get(req.params.id, req.context)
 
     let shiftType = {
         id: (req.body.newShiftType || req.body.shiftType).id
@@ -90,7 +88,8 @@ exports.search = async (req, res) => {
 
     let employeeQuery = {
         organization: global.toObjectId(req.context.organization.id),
-        status: 'active'
+        status: 'active',
+        supervisor: req.context.user
     }
 
     if (req.query.code) {
@@ -119,6 +118,11 @@ exports.search = async (req, res) => {
         employeeQuery['supervisor'] = global.toObjectId(req.query.supervisorId)
     }
 
+    if (req.query.supervisor) {
+        let supervisor = await db.employee.findOne({ code: req.query.supervisor, organization: req.context.organization.id })
+        employeeQuery['supervisor'] = supervisor.id
+    }
+
     if (req.query.shiftType) {
         let shiftIds = []
         let queryShifts = req.query.shiftType.split(',')
@@ -134,7 +138,7 @@ exports.search = async (req, res) => {
         let divisionList = []
         let queryDivisionList = req.query.divisions.split(',')
         queryDivisionList.forEach(division => {
-            divisionList.push(division.toLowerCase())
+            divisionList.push(division)
         })
         employeeQuery['division'] = {
             $in: divisionList
@@ -145,7 +149,7 @@ exports.search = async (req, res) => {
         let departmentList = []
         let queryDepartmentList = req.query.departments.split(',')
         queryDepartmentList.forEach(department => {
-            departmentList.push(department.toLowerCase())
+            departmentList.push(department)
         })
         employeeQuery['department'] = {
             $in: departmentList
@@ -155,7 +159,7 @@ exports.search = async (req, res) => {
         let contractorList = []
         let queryContractorsList = req.query.contractors.split(',')
         queryContractorsList.forEach(contractor => {
-            contractorList.push(contractor.toLowerCase())
+            contractorList.push(contractor)
         })
         employeeQuery['contractor'] = {
             $in: contractorList
@@ -166,13 +170,13 @@ exports.search = async (req, res) => {
         let designationList = []
         let queryDesignationList = req.query.designations.split(',')
         queryDesignationList.forEach(designation => {
-            designationList.push(designation.toLowerCase())
+            designationList.push(designation)
         })
         employeeQuery['designation'] = {
             $in: designationList
         }
     }
-    if (!req.context.hasPermission(['superadmin', 'admin'])) {
+    if (!req.context.hasPermission(['organization.superadmin', 'organization.admin'])) {
         employeeQuery.supervisor = req.context.user.id
     }
 

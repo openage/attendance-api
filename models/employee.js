@@ -1,9 +1,10 @@
 'use strict'
 var mongoose = require('mongoose')
 module.exports = {
-    trackingId: String,
-    EmpDb_Emp_id: String, // tracking id TODO: obsolete
-    type: { type: String }, // student or employee
+    trackingId: String, // TODO rename to externalId
+    code: String,
+    phone: String,
+    email: String,
 
     role: {
         id: { type: String },
@@ -11,11 +12,8 @@ module.exports = {
         code: String,
         permissions: [{ type: String }]
     },
-    name: String,
-    code: String,
 
-    phone: String,
-    email: String,
+    type: { type: String }, // student or employee
 
     profile: {
         firstName: String,
@@ -28,64 +26,13 @@ module.exports = {
         }
     },
 
-    status: String,
-    deactivationDate: {
-        type: Date
-    },
-
-    fatherName: String,
-    dob: Date,
-    gender: String,
-    picData: {
-        type: String,
-        default: ''
-    },
-    picUrl: {
-        type: String,
-        default: null
-    },
-
-    reportees: [{ type: mongoose.Schema.Types.ObjectId, ref: 'employee' }],
-
     biometricCode: String,
 
-    abilities: {
-        maualAttendance: {
-            type: Boolean,
-            default: false
-        },
-        shiftNotifier: {
-            type: Boolean,
-            default: true
-        },
-        trackLocation: {
-            type: Boolean,
-            default: false
-        },
-        manualByBeacon: {
-            type: Boolean,
-            default: false
-        },
-        manualByWifi: {
-            type: Boolean,
-            default: false
-        },
-        manualByGeoFencing: {
-            type: Boolean,
-            default: false
-        }
-    },
+    status: String,
 
     config: Object,
+    meta: Object,
 
-    contractor: {
-        type: String,
-        default: ''
-    },
-    designation: {
-        type: String,
-        default: ''
-    },
     department: {
         type: String,
         default: ''
@@ -117,5 +64,45 @@ module.exports = {
     },
 
     organization: { type: mongoose.Schema.Types.ObjectId, ref: 'organization' },
-    tenant: { type: mongoose.Schema.Types.ObjectId, ref: 'tenant' }
+    tenant: { type: mongoose.Schema.Types.ObjectId, ref: 'tenant' },
+
+    reportees: [{ type: mongoose.Schema.Types.ObjectId, ref: 'employee' }], // obsolete
+
+    name: String, // obsolete - user profile
+    deactivationDate: Date, // obsolete
+    fatherName: String, // obsolete - use meta
+    dob: Date, // obsolete - user profile
+    gender: String, // obsolete - user profile
+    picData: String, // obsolete - user profile
+    picUrl: String, // obsolete - user profile
+
+    contractor: String, // obsolete - use meta
+    designation: String, // obsolete - use meta
+
+    abilities: { // obsolete - use config
+        maualAttendance: {
+            type: Boolean,
+            default: false
+        },
+        shiftNotifier: {
+            type: Boolean,
+            default: true
+        },
+        trackLocation: {
+            type: Boolean,
+            default: false
+        },
+        manualByBeacon: {
+            type: Boolean,
+            default: false
+        },
+        manualByWifi: {
+            type: Boolean,
+            default: false
+        },
+        manualByGeoFencing: {
+            type: Boolean,
+            default: false
+        }
+    }
 }

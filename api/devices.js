@@ -25,13 +25,13 @@ api.setStatus = async (req) => {
     let deviceId = req.params.id
 
     switch (req.body.status) {
-    case 'online':
-        await deviceService.setOnline(deviceId, req.context)
-        break
+        case 'online':
+            await deviceService.setOnline(deviceId, req.context)
+            break
 
-    case 'offline':
-        await deviceService.setOffline(deviceId, req.context)
-        break
+        case 'offline':
+            await deviceService.setOffline(deviceId, req.context)
+            break
     }
 
     return 'done'
@@ -60,17 +60,15 @@ api.syncTimeLogs = async (req) => {
         throw new Error('only csv file is accepted')
     }
 
-    var csvFile = files.file
+    let csvFile = files.file
     let fileName = `${req.context.organization.code}-time-logs-${moment().format('YYYY-MM-DD-HH-mm-ss-ms')}.csv`.replace(/:/g, '-')
     let newPath = join(appRoot.path, 'temp', fileName)
-    req.context.logger.debug('csvFile', {
+    req.context.logger.debug('received csv file', {
         path: newPath,
         size: csvFile.size,
         device: req.params.deviceId
     })
     fs.renameSync(csvFile.path, newPath)
-
-    await deviceService.log(req.params.deviceId, 'Debug', `received csv file - size: ${csvFile.size}, name: ${newPath}`, req.context)
 
     await offline.queue('file-import', 'time-log', {
         filePath: newPath,

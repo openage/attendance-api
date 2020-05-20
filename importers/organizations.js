@@ -2,12 +2,12 @@
 var organizations = require(`../services/organizations`)
 var jsonfile = require('jsonfile')
 
-exports.run = function (req, onComplete, onProgress) {
+exports.run = async (req, context) => {
     if (!req.file) {
-        return onComplete('json file is required')
+        throw new Error('json file is required')
     }
 
     var model = jsonfile.readFileSync(req.file)
 
-    organizations.create(model, onComplete)
+    await organizations.create(model, context)
 }

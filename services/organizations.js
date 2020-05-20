@@ -43,7 +43,7 @@ exports.create = async (model, context) => {
 }
 
 exports.update = async (id, model, context) => {
-    if (id === 'me') {
+    if (id === 'me' || id === 'my') {
         id = context.organization.id
     }
 

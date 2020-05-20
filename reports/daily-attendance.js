@@ -74,8 +74,13 @@ const extractQuery = (params, context) => {
         }
     }
     if (params.shiftType) {
-        query['emp.shiftType'] = {
-            $in: params.shiftType.map(i => i.id)
+        let shiftIds = []
+        let queryShifts = params.shiftType
+        queryShifts.forEach(shift => {
+            shiftIds.push(global.toObjectId(shift.id))
+        })
+        query['shiftType._id'] = {
+            $in: shiftIds
         }
     }
     if (params.attendance) {

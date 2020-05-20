@@ -9,6 +9,7 @@ const moment = require('moment')
 const taskService = require('../../services/tasks')
 
 const processOneByOne = async (models, device, context) => {
+    let log = context.logger.start(`Count:${(models || []).length}`, { device: device.id })
     let task = context.task
     task.progress = 2
     task.meta.count = models.length
@@ -24,7 +25,13 @@ const processOneByOne = async (models, device, context) => {
             task.progress = 2 + Math.floor(98 * count / models.length)
             await task.save()
 
-            await devices.log(device, 'Debug', `Processed time-log: '${timeLog.id}' employee:'${model.employee.code || model.employee.biometricCode}', time: '${model.time}', type: '${model.type || '--'}'.`, context)
+            log.debug(`Processed 
+                progress: '${task.progress}',
+                time-log: '${timeLog.id}', 
+                user-code:'${model.employee.code}', 
+                biometric-code: '${model.employee.biometricCode}',
+                time: '${model.time}', 
+                type: '${model.type || '--'}'.`)
         } catch (err) {
             task.meta.errors = task.meta.errors || []
             task.meta.errors.push({
@@ -38,15 +45,18 @@ const processOneByOne = async (models, device, context) => {
             task.markModified('meta')
             await task.save()
 
-            devices.log(device, 'Error', `Error while saving time-log employee:'${model.employee.code || model.employee.biometricCode}', time: '${model.time}', type: '${model.type || '--'}'. Error: '${err}'`, context)
-            context.logger.error(err)
+            log.error(`Error while processing 
+                user-code:'${model.employee.code}', 
+                biometric-code: '${model.employee.biometricCode}',
+                time: '${model.time}', 
+                type: '${model.type || '--'}'.`, err)
         }
     }
 
     task.status = 'done'
     await task.save()
+    log.end()
     // TODO: delete file
-    await devices.log(device, 'Info', `${models.length} time-log(s) processed`, context)
 }
 
 // the default processing would be done here
@@ -60,15 +70,13 @@ exports.process = async (data, context) => {
     }
 
     let log = context.logger.start({
-        location: data.filePath
+        location: data.filePath,
+        device: device.id
     })
 
     if (device && device.type && device.type === 'master') {
-        devices.log(device, 'Info', `Ignoring time logs, as this is 'master' device`, context)
         log.info(`ignoring records from ${device.id}`)
         return
-    } else {
-        devices.log(device, 'Debug', `Processing time logs from file: '${data.filePath}'`, context)
     }
 
     let task = context.task
@@ -106,23 +114,23 @@ exports.process = async (data, context) => {
             let deviceLogType = device && device.type ? device.type : 'parse'
             if (deviceLogType) {
                 switch (device.type) {
-                case 'in':
-                    type = 'checkIn'
-                    isComputed = false
-                    break
-                case 'out':
-                    type = 'checkOut'
-                    isComputed = false
-                    break
-                case 'parse':
-                    type = undefined
-                    isComputed = true
-                    break
-                case 'both':
-                    isComputed = !type
-                    break
-                default:
-                    break
+                    case 'in':
+                        type = 'checkIn'
+                        isComputed = false
+                        break
+                    case 'out':
+                        type = 'checkOut'
+                        isComputed = false
+                        break
+                    case 'parse':
+                        type = undefined
+                        isComputed = true
+                        break
+                    case 'both':
+                        isComputed = !type
+                        break
+                    default:
+                        break
                 }
             }
 

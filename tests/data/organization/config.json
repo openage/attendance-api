@@ -1,0 +1,72 @@
+{
+    "timeZone": "IST",
+    "formats": {
+        "date": "DD-MM-YYYY"
+    },
+    "topology": {
+        "supervisor": { "singular": "mentor", "plural": "mentors" }
+    },
+    "checkIn": {
+        "rules": {
+            "limit": 480
+        }
+    },
+    "checkOut": {
+        "rules": {
+            "limit": 180
+        }
+    },
+    "reports": {
+        "daily-attendance": {
+            "name": "Daily Attendance Report",
+            "header": {
+                "date": ""
+            },
+            "columns": [
+                { "label": "Emp Code", "key": "code" },
+                { "label": "Emp Name", "key": "name" },
+                { "label": "Shift Type", "key": "shift" },
+                { "label": "Check In", "key": "checkIn" },
+                { "label": "Lunch Out", "key": "out1" },
+                { "label": "Lunch In", "key": "in2" },
+                { "label": "Check Out", "key": "checkOut" },
+                { "label": "Status", "key": "status" },
+                { "label": "Net Hours", "key": "clocked" }
+            ],
+            "format": {
+                "xlsx": {
+                    "sheet": "Attendances",
+                    "styles": {
+                        "code": {
+                            "value": { "border": null, "font": { "sz": "10", "bold": true } }
+                        },
+                        "name": {
+                            "width": 20.0,
+                            "value": { "border": null, "font": { "sz": "10", "bold": true } }
+                        },
+                        "checkIn": {
+                            "width": 8.0,
+                            "value": { "align": "center" }
+                        },
+                        "checkOut": {
+                            "width": 8.0,
+                            "value": { "align": "center" }
+                        },
+                        "in2": {
+                            "width": 8.0,
+                            "value": { "align": "center" }
+                        },
+                        "out1": {
+                            "width": 8.0,
+                            "value": { "align": "center" }
+                        },
+                        "clocked": {
+                            "width": 8.0,
+                            "value": { "align": "center" }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

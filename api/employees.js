@@ -1,8 +1,9 @@
 'use strict'
 const mapper = require('../mappers/employee')
 const employeeService = require('../services/employees')
-
+const attendanceService = require('../services/attendances')
 const employeeGetter = require('../services/employee-getter')
+const moment = require('moment')
 
 exports.get = async (req) => {
     let employee = await employeeGetter.get(req.params.id, req.context)
@@ -10,7 +11,7 @@ exports.get = async (req) => {
 }
 
 exports.get = async (req, res) => {
-    let employeeId = req.params.id === 'my' ? req.context.employee.id : req.params.id
+    let employeeId = req.params.id === 'my' ? req.context.user.id : req.params.id
     let employee
 
     if (!employeeId.isObjectId()) {
@@ -28,7 +29,7 @@ exports.get = async (req, res) => {
     }
 
     if (employee.picUrl && !employee.picData) {
-        employee.picData = await employeeService.getPicDataFromUrl(employee.picUrl)
+        // employee.picData = await employeeService.getPicDataFromUrl(employee.picUrl)
         await employee.save()
     }
 
@@ -63,7 +64,7 @@ exports.get = async (req, res) => {
     employee.today = !req.query.date
 
     if (employee.picUrl && !employee.picData) {
-        employee.picData = await employeeService.getPicDataFromUrl(employee.picUrl)
+        // employee.picData = await employeeService.getPicDataFromUrl(employee.picUrl)
     }
     return mapper.toModel(employee)
 }
@@ -74,9 +75,7 @@ exports.merge = async (req) => {
     return mapper.toModel(employee)
 }
 
-exports.search = (req, res) => {
-    let fromDate = req.query.date ? moment(req.query.date).set('hour', 0).set('minute', 0).set('second', 0).set('millisecond', 0)._d : moment().set('hour', 0).set('minute', 0).set('second', 0).set('millisecond', 0)._d
-    let toDate = req.query.date ? moment(req.query.date).set('hour', 0).set('minute', 0).set('second', 0).set('millisecond', 0).add(1, 'day')._d : moment().set('hour', 0).set('minute', 0).set('second', 0).set('millisecond', 0).add(1, 'day')._d
+exports.search = async (req, res) => {
     let PageNo = Number(req.query.pageNo)
     let pageSize = Number(req.query.pageSize)
     let toPage = (PageNo || 1) * (pageSize || 10)
@@ -86,9 +85,8 @@ exports.search = (req, res) => {
 
     let query = {
         status: 'active',
-        organization: req.context.organization.id
-        // phone: { $exists: true },
-        // _id: { $ne: req.employee }
+        organization: req.context.organization.id,
+        supervisor: req.context.user
     }
 
     if (req.query.name) {
@@ -109,28 +107,15 @@ exports.search = (req, res) => {
         query.code = req.query.code
     }
 
-    Promise.all([
-        db.employee.find(query).count(),
-        db.employee.find(query).populate('shiftType supervisor').sort({ name: 1 })
-            .skip(fromPage).limit(pageLmt)
+    let count = await db.employee.find(query).count()
+    let employees = await db.employee.find(query).populate('shiftType supervisor').sort({ name: 1 })
+        .skip(fromPage).limit(pageLmt)
 
-    ]).then((result) => {
-        Promise.each(result[1], employee => {
-            return db.attendance.findOne({
-                employee: employee._id,
-                ofDate: {
-                    $gte: fromDate,
-                    $lt: toDate
-                }
-            }).then((attendance) => {
-                employee.attendance = attendance
-            })
-        }).then(() => {
-            return res.page(mapper.toSearchModel(result[1]), pageLmt, PageNo, result[0])
-        })
-    }).catch(err => {
-        res.failure(err)
-    })
+    for (const employee of employees) {
+        employee.attendance = await attendanceService.getAttendanceByDate(req.query.date, employee, {}, req.context)
+    }
+
+    return res.page(mapper.toSearchModel(employees), pageLmt, PageNo, count)
 }
 
 exports.update = async (req) => {

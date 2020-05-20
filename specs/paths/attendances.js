@@ -4,20 +4,9 @@ module.exports = [{
         'summary': 'Extract Attendances',
         'description': 'Extract Attendances',
         'parameters': [{
-            'name': 'x-access-token',
-            'in': 'header',
-            'description': 'token',
-            'required': true
-        }, {
             'name': 'ofDate',
             'in': 'query',
             'description': 'send UTC'
-        }, {
-            'name': 'org-code',
-            'in': 'header',
-            'description': 'code of organization',
-            'required': true,
-            'type': 'string'
         }, {
             'name': 'name',
             'in': 'query',
@@ -42,51 +31,11 @@ module.exports = [{
     }
 },
 {
-    url: '/monthlyPdf',
-    get: {
-        'summary': 'Monthy Attendances pdf',
-        'description': 'Monthy Attendances pdf',
-        'parameters': [{
-            'name': 'x-access-token',
-            'in': 'header',
-            'description': 'token',
-            'required': true
-        }, {
-            'name': 'date',
-            'in': 'query',
-            'description': 'send UTC'
-        }, {
-            'name': 'org-code',
-            'in': 'header',
-            'description': 'code of organization',
-            'required': true,
-            'type': 'string'
-        }, {
-            'name': 'code',
-            'in': 'query',
-            'description': 'send code'
-        }],
-        'responses': {
-            'default': {
-                'description': 'Unexpected error',
-                'schema': {
-                    '$ref': '#/definitions/Error'
-                }
-            }
-        }
-    }
-},
-{
     url: '/getOneDayAttendances',
     get: {
         'summary': 'One Day Attendances',
         'description': 'One Day Attendances',
         'parameters': [{
-            'name': 'x-access-token',
-            'in': 'header',
-            'description': 'token',
-            'required': true
-        }, {
             'name': 'ofDate',
             'in': 'query',
             'description': 'send UTC'
@@ -137,11 +86,6 @@ module.exports = [{
         'summary': 'One Day Attendances Excel',
         'description': 'One Day Attendances Excel',
         'parameters': [{
-            'name': 'x-access-token',
-            'in': 'header',
-            'description': 'token',
-            'required': true
-        }, {
             'name': 'ofDate',
             'in': 'query',
             'description': 'send UTC'
@@ -180,11 +124,6 @@ module.exports = [{
         'summary': 'Get Attendance And Time logs',
         'description': 'Get Attendance And Time logs',
         'parameters': [{
-            'name': 'x-access-token',
-            'in': 'header',
-            'description': 'token',
-            'required': true
-        }, {
             'name': 'fromDate',
             'in': 'query',
             'description': 'send UTC',
@@ -193,12 +132,6 @@ module.exports = [{
             'name': 'toDate',
             'in': 'query',
             'description': 'send UTC'
-        }, {
-            'name': 'org-code',
-            'in': 'header',
-            'description': 'code of organization',
-            'required': true,
-            'type': 'string'
         }, {
             'name': 'id',
             'in': 'path',
@@ -221,18 +154,7 @@ module.exports = [{
     get: {
         'summary': 'Get Current Date',
         'description': 'Get Current Date and Time',
-        'parameters': [{
-            'name': 'x-access-token',
-            'in': 'header',
-            'description': 'token',
-            'required': true
-        }, {
-            'name': 'org-code',
-            'in': 'header',
-            'description': 'code of organization',
-            'required': true,
-            'type': 'string'
-        }],
+        'parameters': [],
         'responses': {
             'default': {
                 'description': 'Unexpected error',
@@ -243,59 +165,13 @@ module.exports = [{
         }
     }
 },
-{
-    url: '/monthReport',
-    get: {
-        'summary': 'Month Report of single Employee Excel',
-        'description': 'Month Report of single Employee Excel',
-        'parameters': [{
-            'name': 'x-access-token',
-            'in': 'header',
-            'description': 'token',
-            'required': true
-        }, {
-            'name': 'ofDate',
-            'in': 'query',
-            'description': 'send UTC'
-        }, {
-            'name': 'org-code',
-            'in': 'header',
-            'description': 'code of organization',
-            'required': true,
-            'type': 'string'
-        }, {
-            'name': 'employee',
-            'in': 'query',
-            'description': 'id of employee',
-            'required': true,
-            'type': 'string'
-        }],
-        'responses': {
-            'default': {
-                'description': 'Unexpected error',
-                'schema': {
-                    '$ref': '#/definitions/Error'
-                }
-            }
-        }
-    }
-},
+
 {
     url: '/',
     get: {
-        'summary': 'Get your attendences',
-        'description': 'get your attendences',
+        'summary': 'Get your attendances',
+        'description': 'get your attendances',
         'parameters': [{
-            'name': 'org-code',
-            'in': 'header',
-            'description': 'Org-Code',
-            'required': true
-        }, {
-            'name': 'x-access-token',
-            'in': 'header',
-            'description': 'token',
-            'required': true
-        }, {
             'name': 'fromDate',
             'in': 'query',
             'description': 'send UTC'
@@ -328,18 +204,6 @@ module.exports = [{
             'schema': {
                 '$ref': '#/definitions/attendancesReq'
             }
-        }, {
-            'name': 'org-code',
-            'in': 'header',
-            'description': 'code of org',
-            'required': true,
-            'type': 'string'
-        }, {
-            'name': 'x-access-token',
-            'in': 'header',
-            'description': 'token',
-            'required': true,
-            'type': 'string'
         }],
         'responses': {
             'default': {
@@ -364,18 +228,6 @@ module.exports = [{
             'schema': {
                 '$ref': '#/definitions/AbsentAttendancesReq'
             }
-        }, {
-            'name': 'org-code',
-            'in': 'header',
-            'description': 'code of org',
-            'required': true,
-            'type': 'string'
-        }, {
-            'name': 'x-access-token',
-            'in': 'header',
-            'description': 'token',
-            'required': true,
-            'type': 'string'
         }],
         'responses': {
             'default': {
@@ -390,14 +242,9 @@ module.exports = [{
 {
     url: '/employee/month/summary',
     get: {
-        'summary': 'Get summary attendence',
-        'description': 'get summary attendence',
+        'summary': 'Get summary attendance',
+        'description': 'get summary attendance',
         'parameters': [{
-            'name': 'org-code',
-            'in': 'header',
-            'description': 'Org-Code',
-            'required': true
-        }, {
             'name': 'pageNo',
             'in': 'query',
             'description': 'send Number'
@@ -418,11 +265,6 @@ module.exports = [{
             'in': 'query',
             'description': 'send code'
         }, {
-            'name': 'x-access-token',
-            'in': 'header',
-            'description': 'token',
-            'required': true
-        }, {
             'name': 'ofDate',
             'in': 'query',
             'description': 'send UTC'
@@ -440,19 +282,9 @@ module.exports = [{
 {
     url: '/{id}',
     get: {
-        'summary': 'Get attendence by id',
-        'description': 'get attendence by id',
+        'summary': 'Get attendance by id',
+        'description': 'get attendance by id',
         'parameters': [{
-            'name': 'org-code',
-            'in': 'header',
-            'description': 'Org-Code',
-            'required': true
-        }, {
-            'name': 'x-access-token',
-            'in': 'header',
-            'description': 'token',
-            'required': true
-        }, {
             'name': 'id',
             'in': 'path',
             'description': 'attendance id',
@@ -469,8 +301,8 @@ module.exports = [{
         }
     },
     put: {
-        'summary': 'Update attendence by id',
-        'description': 'Update attendence by id',
+        'summary': 'Update attendance by id',
+        'description': 'Update attendance by id',
         'parameters': [{
             'name': 'body',
             'in': 'body',
@@ -479,16 +311,6 @@ module.exports = [{
             'schema': {
                 '$ref': '#/definitions/attendanceReq'
             }
-        }, {
-            'name': 'org-code',
-            'in': 'header',
-            'description': 'Org-Code',
-            'required': true
-        }, {
-            'name': 'x-access-token',
-            'in': 'header',
-            'description': 'token',
-            'required': true
         }, {
             'name': 'id',
             'in': 'path',
@@ -509,19 +331,9 @@ module.exports = [{
 {
     url: '/{id}/summary',
     get: {
-        'summary': 'Get attendence summary',
-        'description': 'get attendence summary',
+        'summary': 'Get attendance summary',
+        'description': 'get attendance summary',
         'parameters': [{
-            'name': 'org-code',
-            'in': 'header',
-            'description': 'Org-Code',
-            'required': true
-        }, {
-            'name': 'x-access-token',
-            'in': 'header',
-            'description': 'token',
-            'required': true
-        }, {
             'name': 'id',
             'in': 'path',
             'description': 'set my to to get yours profile otherwise id',
@@ -541,19 +353,9 @@ module.exports = [{
 {
     url: '/my/team/summary',
     get: {
-        'summary': 'Get team attendence summary',
-        'description': 'get team attendence summary',
-        'parameters': [{
-            'name': 'org-code',
-            'in': 'header',
-            'description': 'Org-Code',
-            'required': true
-        }, {
-            'name': 'x-access-token',
-            'in': 'header',
-            'description': 'token',
-            'required': true
-        }],
+        'summary': 'Get team attendance summary',
+        'description': 'get team attendance summary',
+        'parameters': [],
         'responses': {
             'default': {
                 'description': 'Unexpected error',
@@ -578,16 +380,6 @@ module.exports = [{
                 '$ref': '#/definitions/AttendanceLocation'
             }
         }, {
-            'name': 'org-code',
-            'in': 'header',
-            'description': 'Org-Code',
-            'required': true
-        }, {
-            'name': 'x-access-token',
-            'in': 'header',
-            'description': 'token',
-            'required': true
-        }, {
             'name': 'id',
             'in': 'path',
             'description': 'attendanceId',
@@ -608,18 +400,8 @@ module.exports = [{
     url: '/{id}/locationLogs',
     get: {
         'summary': 'Get Employee Location',
-        'description': 'Get Employee Location correspponding to attendanceId',
+        'description': 'Get Employee Location corresponding to attendanceId',
         'parameters': [{
-            'name': 'org-code',
-            'in': 'header',
-            'description': 'Org-Code',
-            'required': true
-        }, {
-            'name': 'x-access-token',
-            'in': 'header',
-            'description': 'token',
-            'required': true
-        }, {
             'name': 'id',
             'in': 'path',
             'description': 'attendanceId',
@@ -640,18 +422,8 @@ module.exports = [{
     url: '/{id}/getLocations',
     get: {
         'summary': 'Get Employee Location',
-        'description': 'Get Employee Location correspponding to attendanceId',
+        'description': 'Get Employee Location corresponding to attendanceId',
         'parameters': [{
-            'name': 'org-code',
-            'in': 'header',
-            'description': 'Org-Code',
-            'required': true
-        }, {
-            'name': 'x-access-token',
-            'in': 'header',
-            'description': 'token',
-            'required': true
-        }, {
             'name': 'id',
             'in': 'path',
             'description': 'employeeId set my if to get own logs',
@@ -686,16 +458,6 @@ module.exports = [{
             'schema': {
                 '$ref': '#/definitions/attendanceExtendReq'
             }
-        }, {
-            'name': 'org-code',
-            'in': 'header',
-            'description': 'Org-Code',
-            'required': true
-        }, {
-            'name': 'x-access-token',
-            'in': 'header',
-            'description': 'token',
-            'required': true
         }, {
             'name': 'id',
             'in': 'path',

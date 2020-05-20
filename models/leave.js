@@ -20,6 +20,7 @@ module.exports = {
     },
     reason: String,
     comment: String,
+    externalId: String,
     leaveType: { type: mongoose.Schema.Types.ObjectId, ref: 'leaveType' },
     employee: { type: mongoose.Schema.Types.ObjectId, ref: 'employee' },
 

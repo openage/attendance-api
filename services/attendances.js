@@ -54,10 +54,10 @@ const getStatusByConfig = (employee, shift, context) => {
         return attendanceStates.weekOff
     }
     switch (shift.status) {
-    case 'holiday':
-        return attendanceStates.holiday
-    case 'weekOff':
-        return attendanceStates.weekOff
+        case 'holiday':
+            return attendanceStates.holiday
+        case 'weekOff':
+            return attendanceStates.weekOff
     }
 
     return null
@@ -105,7 +105,9 @@ const getAttendanceByShift = async (employee, shift, options, context) => {
             status: attendanceStates.absent,
             shift: shift,
             shiftType: shift.shiftType,
-            ofDate: date
+            ofDate: date,
+            organization: context.organization,
+            tenant: context.tenant
         })
 
         attendance.status = getStatusByConfig(employee, shift, context) || attendanceStates.absent
@@ -285,14 +287,14 @@ const get = async (query, context) => {
             })
     }
 
-    if (query.date && query.employee) {
-        return getAttendanceByDate(query.date, query.employee, {
+    if (query.date && (query.employee || query.user)) {
+        return getAttendanceByDate(query.date, (query.employee || query.user), {
             create: true
         }, context)
     }
 
-    if (query.shift && query.employee) {
-        return getAttendanceByShift(query.employee, query.shift, {
+    if (query.shift && (query.employee || query.user)) {
+        return getAttendanceByShift((query.employee || query.user), query.shift, {
             create: true
         }, context)
     }
@@ -1271,4 +1273,42 @@ exports.getOneDayAttendances = async (page, query, context) => {
     })
 
     return attendances
+}
+
+exports.search = async (query, paging, context) => {
+    let where = {
+        organization: context.organization
+    }
+
+    if (query.user) {
+        where.employee = await employees.get(query.user, context)
+    } else {
+        where.employee = context.user.id
+    }
+
+    if (query.ofDate) {
+        where.ofDate = query.ofDate
+    } else if (query.fromDate && query.toDate) {
+        where.ofDate = {
+            $gte: dates.date(query.fromDate).bod(),
+            $lt: dates.date(query.toDate).eod()
+        }
+    } else {
+        where.ofDate = dates.date(new Date()).bod()
+    }
+
+    let attendances = await db.attendance.find(where)
+        .populate('timeLogs')
+        .populate({
+            path: 'shift',
+            populate: {
+                path: 'shiftType holiday'
+            }
+        }).sort({
+            ofDate: 1
+        })
+
+    return {
+        items: attendances
+    }
 }

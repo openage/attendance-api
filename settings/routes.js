@@ -2,37 +2,26 @@
 const contextBuilder = require('../helpers/context-builder')
 const apiRoutes = require('@open-age/express-api')
 const fs = require('fs')
-const appRoot = require('app-root-path')
 const specs = require('../specs')
-const fsConfig = require('config').get('folders')
 
 module.exports.configure = (app, logger) => {
     logger.start('settings:routes:configure')
-    app.get('/', (req, res) => {
-        res.render('index', {
-            title: '~ This Open Age AMS api ~'
-        })
-    })
 
-    app.get('/swagger', (req, res) => {
-        res.writeHeader(200, {
-            'Content-Type': 'text/html'
-        })
-        fs.readFile('./public/swagger.html', null, function (err, data) {
+    let specsHandler = function (req, res) {
+        fs.readFile('./public/specs.html', function (err, data) {
             if (err) {
                 res.writeHead(404)
+                res.end()
+                return
             }
-            res.write(data)
-            res.end()
-        })
-    })
-
-    app.get('/specs', function (req, res) {
-        fs.readFile('./public/specs.html', function (err, data) {
             res.contentType('text/html')
             res.send(data)
         })
-    })
+    }
+
+    app.get('/', specsHandler)
+
+    app.get('/specs', specsHandler)
 
     app.get('/api/specs', function (req, res) {
         res.contentType('application/json')
@@ -220,6 +209,7 @@ module.exports.configure = (app, logger) => {
         }])
 
     api.model('biometrics').register('REST', { permissions: 'organization.user' })
+    api.model('users').register('REST', { permissions: 'organization.user' })
 
     api.model('employees')
         .register([{
@@ -240,7 +230,7 @@ module.exports.configure = (app, logger) => {
             action: 'PUT',
             method: 'merge',
             url: '/:id/merge',
-            filter: [auth.requiresToken]
+            permissions: 'organization.user'
         }, {
             action: 'PUT',
             method: 'update',
@@ -446,12 +436,28 @@ module.exports.configure = (app, logger) => {
             permissions: 'organization.user'
         }, {
             action: 'GET',
+            method: 'getByDate',
+            url: 'getByDate/:date',
+            permissions: 'organization.user'
+        }, {
+            action: 'GET',
             method: 'get',
-            url: '/:date',
+            url: '/:id',
             permissions: 'organization.user'
         }, {
             action: 'GET',
             method: 'search',
+            permissions: 'organization.user'
+        },
+        {
+            action: 'DELETE',
+            method: 'delete',
+            url: '/:id',
+            permissions: 'organization.user'
+        }, {
+            action: 'PUT',
+            method: 'update',
+            url: '/:id',
             permissions: 'organization.user'
         }])
 
@@ -540,18 +546,13 @@ module.exports.configure = (app, logger) => {
     api.model('leaveBalances')
         .register([{
             action: 'POST',
-            method: 'leaveBalanceExtractorByExcel',
-            url: '/importer/excel',
-            permissions: 'organization.user'
-        }, {
-            action: 'POST',
-            method: 'createForMany',
-            url: '/forMany',
-            permissions: 'organization.user'
-        }, {
-            action: 'POST',
             method: 'runOvertimeRule',
             url: '/run-overtime-rule',
+            permissions: 'organization.user'
+        }, {
+            action: 'POST',
+            method: 'bulk',
+            url: '/bulk',
             permissions: 'organization.user'
         }, {
             action: 'PUT',
@@ -566,16 +567,6 @@ module.exports.configure = (app, logger) => {
         }, {
             action: 'GET',
             method: 'search',
-            permissions: 'organization.user'
-        }, {
-            action: 'GET',
-            method: 'organizationLeaveBalances',
-            url: '/my/organization',
-            permissions: 'organization.user'
-        }, {
-            action: 'PUT',
-            method: 'multiUpdateBalance',
-            url: '/multi/:employee',
             permissions: 'organization.user'
         }
         ])
@@ -619,10 +610,6 @@ module.exports.configure = (app, logger) => {
         .register([{
             action: 'POST',
             method: 'create',
-            permissions: 'organization.user'
-        }, {
-            action: 'GET',
-            method: 'search',
             permissions: 'organization.user'
         }])
 

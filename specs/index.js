@@ -10,11 +10,9 @@ const spec = {
         version: about.version,
         title: about.name
     },
-    host: webServer.rootUrl,
+    host: webServer.url.replace(/(^\w+:|^)\/\//, ''),
     basePath: '/api',
-    schemes: [
-        'http'
-    ],
+    schemes: [],
     consumes: [
         'application/json'
     ],

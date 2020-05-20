@@ -30,9 +30,9 @@ module.exports = async (params, context) => {
 
     var orgDetails = {
         orgName: context.organization.name,
-        downloaderName: context.employee.name,
-        downloaderEmail: context.employee.email,
-        downloaderPhone: context.employee.phone
+        downloaderName: context.user.name,
+        downloaderEmail: context.user.email,
+        downloaderPhone: context.user.phone
     }
 
     if (params.name) {

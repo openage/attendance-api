@@ -197,7 +197,8 @@ const getSummary = async (date, employee, context) => {
     entity = new db.monthSummary({
         month: dates.date(date).bom(),
         employee: employee,
-        organization: context.organization
+        organization: context.organization,
+        tenant: context.tenant
     })
 
     await set(entity, context)
@@ -415,7 +416,8 @@ exports.update = async (date, employee, context) => {
         entity = new db.monthSummary({
             month: dates.date(date).bom(),
             employee: employee,
-            organization: context.organization
+            organization: context.organization,
+            tenant: context.tenant
         })
     }
     await set(entity, context)
@@ -439,7 +441,8 @@ exports.regenerate = async (date, employee, context) => {
         entity = new db.monthSummary({
             month: bom,
             employee: employee,
-            organization: context.organization
+            organization: context.organization,
+            tenant: context.tenant
         })
     }
 
@@ -633,11 +636,9 @@ exports.search = async (params, pageInput, context) => {
     let items = []
 
     if (pageInput.limit) {
-        items = await db.monthSummary.find(query, model).skip(pageInput.skip).limit(pageInput.limit)
+        items = await db.monthSummary.find(query, model).sort('employeeModel.code').collation({ locale: 'en_US', numericOrdering: true }).skip(pageInput.skip).limit(pageInput.limit)
     } else {
-        let limit = total
-        let skip = 0
-        items = await db.monthSummary.find(query, model).skip(skip).limit(limit)
+        items = await db.monthSummary.find(query, model).sort('employeeModel.code').collation({ locale: 'en_US', numericOrdering: true })
     }
 
     let page = {

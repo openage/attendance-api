@@ -157,25 +157,37 @@ const setProfile = (employee, profile, context) => {
     return employee
 }
 
-const setEntity = async (user, model, context) => {
-    user = setProfile(user, model.profile || model, context)
-    if (model.code) {
-        user.code = model.code
+const set = async (entity, model, context) => {
+    entity = setProfile(entity, model.profile || model, context)
+    if (model.code && entity.code !== model.code.toLowerCase()) {
+        entity.code = `${model.code}`.toLowerCase()
+    }
+
+    if (model.userId || model.trackingId) {
+        entity.trackingId = model.userId || model.trackingId
     }
 
     if (model.phone) {
-        user.phone = model.phone
+        entity.phone = model.phone
     }
     if (model.email) {
-        user.email = model.email
+        entity.email = model.email
     }
 
-    if (model.biometricCode && user.biometricCode !== model.biometricCode) {
-        user = await setBiometricCode(user, model.biometricCode, context)
+    if (model.meta) {
+        entity.meta = model.meta // this will be set by the incoming hook from master data
+
+        if (entity.meta.biometricCode && !model.biometricCode) {
+            model.biometricCode = entity.meta.biometricCode
+        }
     }
 
-    if (model.supervisor && model.supervisor.code && (!user.supervisor || user.supervisor.code !== model.supervisor.code)) {
-        user = await setSupervisor(user, model.supervisor, context)
+    if (model.biometricCode && entity.biometricCode !== model.biometricCode) {
+        entity = await setBiometricCode(entity, model.biometricCode, context)
+    }
+
+    if (model.supervisor && model.supervisor.code && (!entity.supervisor || entity.supervisor.code !== model.supervisor.code)) {
+        entity = await setSupervisor(entity, model.supervisor, context)
     }
 
     if (model.isDynamicShift !== undefined) {
@@ -185,130 +197,130 @@ const setEntity = async (user, model, context) => {
         }, context)
 
         if (shiftTypes && shiftTypes.length) {
-            user.isDynamicShift = model.isDynamicShift
+            entity.isDynamicShift = model.isDynamicShift
         } else if (shiftTypes && shiftTypes.length === 0) {
-            return `No dynamicShift found for employee with code: ${model.code}`
+            return `No dynamicShift found for user with code: ${model.code}`
         }
-    }
-
-    if (model.token) {
-        user.token = model.token
     }
 
     if (model.designation) {
         if (typeof model.designation === 'string') {
-            user.designation = model.designation
+            entity.designation = model.designation
         } else {
-            user.designation = model.designation.name
+            entity.designation = model.designation.name
         }
     }
 
     if (model.division) {
         if (typeof model.division === 'string') {
-            user.division = model.division
+            entity.division = model.division
         } else {
-            user.division = model.division.name
+            entity.division = model.division.name
         }
     }
 
     if (model.department) {
         if (typeof model.department === 'string') {
-            user.department = model.department
+            entity.department = model.department
         } else {
-            user.department = model.department.name
+            entity.department = model.department.name
         }
     }
     if (model.config) {
-        user.config = model.config
+        entity.config = model.config
 
         if (model.config.employmentType === 'contract') {
             if (model.config && model.config.contractor) {
                 if (typeof model.config.contractor === 'string') {
-                    user.contractor = model.config.contractor
+                    entity.contractor = model.config.contractor
                 } else {
-                    user.contractor = model.config.contractor.name
+                    entity.contractor = model.config.contractor.name
                 }
             }
         } else if (model.config.employmentType === 'permanent') {
-            user.contractor = ''
+            entity.contractor = ''
         }
     }
 
     if (model.userType) {
-        user.userType = model.userType
+        entity.userType = model.userType
     }
 
     if (model.dol || model.deactivationDate) {
-        user.deactivationDate = model.dol || model.deactivationDate
-    } else if (user.status !== model.status && model.status === 'inactive' && !user.deactivationDate) {
-        user.deactivationDate = dates.date().eod()
+        entity.deactivationDate = model.dol || model.deactivationDate
+    } else if (entity.status !== model.status && model.status === 'inactive' && !entity.deactivationDate) {
+        entity.deactivationDate = dates.date().eod()
     }
 
     if (model.status) {
-        if (user.status !== model.status && model.status === 'inactive') {
-            await biometricService.remove(user, context)
+        if (entity.status !== model.status && model.status === 'inactive') {
+            await biometricService.remove(entity, context)
         }
-        user.status = model.status
+        entity.status = model.status
     }
 
     if (model.role) {
-        user.role = user.role || {}
-        user.role.id = model.role.id
-        user.role.code = model.role.code
-        user.role.key = model.role.key
-        user.role.permissions = model.role.permissions || []
+        entity.role = entity.role || {}
+        entity.role.id = model.role.id
+        entity.role.code = model.role.code
+        entity.role.key = model.role.key
+        entity.role.permissions = model.role.permissions || []
     }
 
     if (model.shiftType) {
-        user = await setShiftType(user, model.shiftType, context)
+        entity = await setShiftType(entity, model.shiftType, context)
     }
 
     if (model.weeklyOff) {
-        user = await weeklyOff(user, model.weeklyOff, context)
+        entity = await weeklyOff(entity, model.weeklyOff, context)
     }
 
     if (model.abilities) {
-        user.abilities = user.abilities || {}
+        entity.abilities = entity.abilities || {}
         Object.keys(model.abilities).forEach(key => {
-            user.abilities[key] = model.abilities[key]
+            entity.abilities[key] = model.abilities[key]
         })
-        user.markModified('abilities')
+        entity.markModified('abilities')
     }
 
-    if (!user.isNew) {
-        await monthlySummaryService.updateEmployee(user, context)
+    if (!entity.isNew) {
+        await monthlySummaryService.updateEmployee(entity, context)
     }
 
-    return user
+    return entity
 }
 
-exports.create = async (model, context) => {
+exports.create = async (model, context, checkExist = true) => {
     let log = context.logger.start('services/employees:create')
 
     if (!model) {
         return
     }
 
-    let user = await userGetter.get(model, context)
+    let user
+
+    if (checkExist) {
+        user = await userGetter.get(model, context, false)
+    }
 
     let isNew = false
     if (!user) {
         isNew = true
         user = new db.employee({
             status: model.status || 'active',
-            EmpDb_Emp_id: model.tackingId,
+            trackingId: model.tackingId,
             role: {
-                id: model.role.id,
-                code: model.role.code
+                id: model.role ? model.role.id : null,
+                code: model.role ? model.role.code : null
             },
             organization: context.organization,
             tenant: context.tenant
         })
     }
-    await setEntity(user, model, context)
+    await set(user, model, context)
     await user.save()
     if (isNew) {
-        await offline.queue('employee', 'new', user, context)
+        offline.queue('employee', 'new', user, context)
     }
     log.end()
     return user
@@ -316,15 +328,15 @@ exports.create = async (model, context) => {
 
 exports.update = async (id, model, context) => {
     let log = context.logger.start('services/employees:update')
-    let employee = await userGetter.get(id, context)
-    await setEntity(employee, model, context)
-    await employee.save()
+    let user = await userGetter.get(id, context, false)
+    await set(user, model, context)
+    await user.save()
     log.end()
-    return employee
+    return user
 }
 
-exports.get = async (query, context) => {
-    return userGetter.get(query, context)
+exports.get = async (query, context, create = true) => {
+    return userGetter.get(query, context, create)
 }
 
 /**
@@ -354,8 +366,9 @@ exports.getByCode = async (code, context) => {
 
     employee = new db.employee({
         code: code,
+        shiftType: shiftType,
         organization: context.organization,
-        shiftType: shiftType
+        tenant: context.tenant
     })
     await employee.save()
 

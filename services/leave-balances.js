@@ -1,8 +1,8 @@
 const db = require('../models')
 const moment = require('moment')
 const employeeService = require('./employee-getter')
-
 const leaveTypeService = require('./leave-types')
+
 exports.get = async (query, context) => {
     context.logger.start('services/leave-balances:get')
 
@@ -29,7 +29,9 @@ exports.get = async (query, context) => {
             employee: query.employee,
             units: 0,
             unitsAvailed: 0,
-            status: 'active'
+            status: 'active',
+            organization: context.organization,
+            tenant: context.tenant
         })).save()
 
         return balance
@@ -38,9 +40,18 @@ exports.get = async (query, context) => {
 }
 
 exports.getByEmployee = async (employee, options, context) => {
-    let query = {
-        employee: employee.id,
-        status: 'active'
+    let query
+    if (employee.id) {
+        query = {
+            employee: employee.id,
+            status: 'active'
+        }
+    } else {
+        employee = await employeeService.get(employee.code, context)
+        query = {
+            employee: employee.id,
+            status: 'active'
+        }
     }
 
     let leaveBalances = await db.leaveBalance.find(query).populate('leaveType')
@@ -77,7 +88,9 @@ exports.getByEmployee = async (employee, options, context) => {
                 employee: employee.id,
                 units: 0,
                 unitsAvailed: 0,
-                status: 'active'
+                status: 'active',
+                organization: context.organization,
+                tenant: context.tenant
             })).save()
         }
 
@@ -130,8 +143,8 @@ exports.grant = async (id, days, journalModel, context) => {
     journal.comment = journalModel.comment
     journal.meta = journalModel.meta
 
-    if (context.employee) {
-        journal.by = context.employee
+    if (context.user) {
+        journal.by = context.user
     }
 
     if (!journal.id) {
@@ -141,6 +154,64 @@ exports.grant = async (id, days, journalModel, context) => {
     await balance.save()
 
     log.end(`gramted ${units} unit(s)`)
+
+    return balance
+}
+
+exports.reduce = async (id, days, journalModel, context) => {
+    let balance = await exports.get(id, context)
+
+    let leaveType = balance.leaveType
+    let units = leaveType.unitsPerDay * days
+
+    let log = context.logger.start({
+        location: 'reduce',
+        leaveType: leaveType.id,
+        leaveBalance: balance.id,
+        employee: balance.employee
+    })
+
+    balance.journals = balance.journals || []
+
+    let journal = {}
+
+    if (journalModel.entity && journalModel.entity.id) {
+        journal = balance.journals.find(item => {
+            return item.entity && item.entity.id === journalModel.entity.id && item.entity.type === journalModel.entity.type
+        })
+
+        if (!journal && !days) {
+            return balance
+        }
+
+        if (!journal) {
+            journal = {
+                entity: {
+                    id: journalModel.entity.id,
+                    type: journalModel.entity.type
+                }
+            }
+        }
+    }
+
+    balance.units = balance.units - (journal.units || 0) - units
+
+    journal.date = new Date()
+    journal.units = units
+    journal.comment = journalModel.comment
+    journal.meta = journalModel.meta
+
+    if (context.user) {
+        journal.by = context.user
+    }
+
+    if (!journal.id) {
+        balance.journals.push(journal)
+    }
+
+    await balance.save()
+
+    log.end(`reduce ${units} unit(s)`)
 
     return balance
 }
@@ -156,6 +227,35 @@ exports.bulk = async (employees, leaveType, days, journalModel, context) => {
     }
 
     return employees.length
+}
+
+exports.uploadBulk = async (employee, leaveCodes, journal, context) => {
+    employee = await employeeService.get({ code: employee.code }, context)
+    let entity = await this.getByEmployee(employee, {}, context)
+    await leaveCodes.forEach(async leave => {
+        if (Number(leave.value) > 0) {
+            let leaveType = await leaveTypeService.get({ code: leave.key }, context)
+            await entity.forEach(async item => {
+                if (item.leaveType.code === leave.key) {
+                    if (Number(item.units) / 2 < Number(leave.value)) {
+                        let newValue = Number(leave.value) - Number(item.units) / 2
+                        item = await exports.grant({
+                            leaveType: leaveType,
+                            employee: employee
+                        }, newValue, journal, context)
+                        return item
+                    } else if (Number(item.units) / 2 > Number(leave.value)) {
+                        let newValue = Number(item.units) / 2 - Number(leave.value)
+                        item = await exports.reduce({
+                            leaveType: leaveType,
+                            employee: employee
+                        }, newValue, journal, context)
+                        return item
+                    }
+                }
+            })
+        }
+    })
 }
 
 exports.runOvertimeRules = async (attendance, options, context) => {

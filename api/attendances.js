@@ -7,6 +7,7 @@ const timeLogsService = require('../services/time-logs')
 
 const db = require('../models')
 const attendanceService = require('../services/attendances')
+const userService = require('../services/employee-getter')
 const monthlyService = require('../services/monthly-summaries')
 
 const timeLogsApi = require('../api/timeLogs')
@@ -23,61 +24,58 @@ exports.getCurrentDate = (req, res) => {
 }
 
 exports.get = async (req) => {
-    let date = dates.date(req.params.id).bod()
-    let employee = {
-        id: req.query.employeeId
+    let attendance
+    if (req.params.id.isObjectId()) {
+        attendance = await attendanceService.get(req.params.id, req.context)
+    } else {
+        let date = dates.date(req.params.id).bod()
+
+        let userId = req.query.employeeId || req.query['user-id']
+        let userCode = req.query.employeeCode || req.query['user-code']
+
+        let user
+        if (userId) {
+            user = {
+                id: userId === 'my' ? req.context.user.id : userId
+            }
+        } else if (userCode) {
+            if (userCode === 'my') {
+                user = {
+                    id: req.context.user.id
+                }
+            } else {
+                user = await userService.get(userCode, req.context)
+            }
+        } else {
+            user = req.context.user
+        }
+
+        attendance = await attendanceService.getAttendanceByDate(date, user, {
+            create: true
+        }, req.context)
     }
-
-    let attendance = await attendanceService.getAttendanceByDate(date, employee, {
-        create: true
-    }, req.context)
-
     attendance.passes = timeLogsService.getPasses(attendance, req.context)
     return mapper.toModel(attendance, req.context)
 }
 
 exports.search = async (req) => {
-    let fromDate
-    let toDate
-    let employeeId = req.query.employee ? req.query.employee : req.context.user.id
+    let query = req.query
 
-    let query = {
-        employee: employeeId
+    let userId = query.employeeId || query['user-id'] || query.employee
+    let userCode = query.employeeCode || query['user-code']
+
+    if (!userId || !userCode) {
+        query.user = {
+            id: userId,
+            code: userCode
+        }
+    } else {
+        query.user = req.context.user
     }
 
-    if (req.query.fromDate || req.query.toDate) {
-        query.ofDate = {}
-    }
-    if (req.query.ofDate) {
-        query.ofDate = req.query.ofDate
-    }
+    let result = await attendanceService.search(query, { sort: { ofDate: true } }, req.context)
 
-    if (req.query.fromDate) {
-        fromDate = moment(req.query.fromDate)
-            .set('hour', 0).set('minute', 0).set('second', 0).set('millisecond', 0)._d
-
-        query.ofDate.$gte = fromDate
-    }
-
-    if (req.query.toDate) {
-        toDate = moment(req.query.toDate)
-            .set('hour', 0).set('minute', 0).set('second', 0).set('millisecond', 0)._d
-
-        query.ofDate.$lt = toDate
-    }
-
-    let attendances = await db.attendance.find(query)
-        .populate('timeLogs')
-        .populate({
-            path: 'shift',
-            populate: {
-                path: 'shiftType holiday'
-            }
-        }).sort({
-            ofDate: 1
-        })
-
-    return mapper.toSearchModel(attendances, req.context)
+    return mapper.toSearchModel(result.items, req.context)
 }
 
 exports.create = async (req) => {
@@ -173,14 +171,18 @@ exports.summary = (req, res) => {
         })
             .populate('recentMostTimeLog')
     ])
-        .spread((tillCurrentYear, tillCurrentMonth, tillCurrentWeek, today) => {
+        .then(function (results) {
             // months , weeks , week ,day
-            return res.data(summaryMapper.toModel(tillCurrentYear, tillCurrentMonth, tillCurrentWeek, today, req.context))
+            return res.data(summaryMapper.toModel(results[0], results[1], results[2], results[3], req.context))
         }).catch(err => res.failure(err))
 }
-
 exports.getMonthlySummary = async (req) => {
     let pageInput = paging.extract(req)
+
+    if (!req.query.supervisorId && req.query.supervisorCode) {
+        let employee = await userService.get(req.query.supervisorCode, req.context)
+        req.query.supervisorId = employee.id
+    }
 
     let params = {
         dates: {
@@ -264,7 +266,7 @@ exports.regenerate = async (req) => {
     }
 }
 
-const extractQuery = (params, context) => {
+const extractQuery = async (params, context) => {
     let ofDate = params.ofDate
     let fromDate = dates.date(ofDate).bod()
     let toDate = dates.date(ofDate).eod()
@@ -292,6 +294,11 @@ const extractQuery = (params, context) => {
 
     if (params.supervisorId) {
         query['emp.supervisor'] = global.toObjectId(params.supervisorId)
+    }
+
+    if (params.supervisorCode) {
+        let supervisor = await userService.get(params.supervisorCode, context)
+        query['emp.supervisor'] = global.toObjectId(supervisor.id)
     }
 
     if (params.userTypes) {
@@ -548,7 +555,7 @@ const continueA = async (currentAttendance, nextAttendance, context) => {
 
 exports.getOneDayAttendances = async (req) => {
     let page = paging.extract(req)
-    let query = extractQuery(req.query, req.context)
+    let query = await extractQuery(req.query, req.context)
 
     let entities = await attendanceService.getOneDayAttendances(page, query, req.context)
 

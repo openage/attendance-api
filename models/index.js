@@ -29,6 +29,7 @@ var init = function () {
             mongoose.model(changeCase.camelCase(name), schema)
         }
     })
+    mongoose.models.user = mongoose.models.employee
 }
 
 init()

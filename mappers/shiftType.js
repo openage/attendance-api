@@ -4,27 +4,38 @@ const extractCheckIn = (entity) => {
     if (!entity) {
         return {}
     }
-    return entity._doc ? {
-        early: entity.early || 0,
-        late: entity.late || 0
-    } : {
-        early: entity.early || 0,
-        late: entity.late || 0
-    }
+    return entity._doc
+        ? {
+            early: entity.early || 0,
+            late: entity.late || 0
+        } : {
+            early: entity.early || 0,
+            late: entity.late || 0
+        }
 }
 const extractCheckOut = (entity) => {
     if (!entity) {
         return {}
     }
-    return entity._doc ? {
-        early: entity.early || 0,
-        late: entity.late || 0
-    } : {
-        early: entity.early || 0,
-        late: entity.late || 0
-    }
+    return entity._doc
+        ? {
+            early: entity.early || 0,
+            late: entity.late || 0
+        } : {
+            early: entity.early || 0,
+            late: entity.late || 0
+        }
 }
 exports.toModel = (entity, context) => {
+    if (!entity) {
+        return
+    }
+
+    if (!entity._doc) {
+        return {
+            id: entity.toString()
+        }
+    }
     var model = {
         id: entity._id,
         name: entity.name,
@@ -95,6 +106,38 @@ exports.toModel = (entity, context) => {
     //         };
     //     }
     // }
+    return model
+}
+
+exports.toSummary = (entity, context) => {
+    if (!entity) {
+        return
+    }
+
+    if (!entity._doc) {
+        return {
+            id: entity.toString()
+        }
+    }
+
+    var model = {
+        id: entity._id,
+        name: entity.name,
+        code: entity.code,
+        color: entity.color || '#000000',
+        isDynamic: entity.isDynamic,
+        startTime: entity.startTime,
+        endTime: entity.endTime,
+        monday: entity.monday,
+        tuesday: entity.tuesday,
+        wednesday: entity.wednesday,
+        thursday: entity.thursday,
+        friday: entity.friday,
+        saturday: entity.saturday,
+        sunday: entity.sunday,
+        status: entity.status
+
+    }
     return model
 }
 

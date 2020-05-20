@@ -22,14 +22,28 @@ exports.runOvertimeRule = async (req) => {
 
 exports.search = async (req) => {
     let employeeId = req.query.id || req.query.employeeId
+    let employeeCode = req.query.code || req.query.employeeCode
 
     if (employeeId) {
         if (employeeId === 'my') {
-            employeeId = req.context.employee.id
+            employeeId = req.context.user.id
         }
 
         let leaveBalances = await leaveBalanceService.getByEmployee({
             id: employeeId
+        }, {}, req.context)
+
+        return mapper.toSearchModel(leaveBalances, req.context)
+    }
+
+    if (employeeCode) {
+
+        if (employeeCode === 'my') {
+            employeeCode = req.context.user.code
+        }
+
+        let leaveBalances = await leaveBalanceService.getByEmployee({
+            code: employeeCode
         }, {}, req.context)
 
         return mapper.toSearchModel(leaveBalances, req.context)
@@ -63,6 +77,9 @@ exports.search = async (req) => {
     return page
 }
 
-exports.organizationLeaveBalances = async (req) => {
-    return exports.search(req)
+exports.bulk = async (req) => {
+    for (const item of req.body.items) {
+        await leaveBalanceService.bulk(item.employee, item.leaveType, item.days, item.journal, req.context)
+    }
+    return `Processed '${req.body.items.length}' record(s)`
 }

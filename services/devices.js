@@ -30,7 +30,11 @@ const set = async (entity, model, context) => {
     }
 
     if (model.machine) {
-        entity.machine = model.machine
+        if (typeof model.machine == 'object') {
+            entity.machine = model.machine.id
+        } else {
+            entity.machine = model.machine
+        }
     }
 
     if (model.location) {
@@ -56,34 +60,14 @@ const set = async (entity, model, context) => {
     return entity
 }
 
-exports.log = async (deviceId, level, message, context) => {
-    if (!deviceId) {
-        return
-    }
-    let id = deviceId.id || deviceId
-
-    try {
-        const device = await db.device.findById(id)
-        if (!device) {
-            context.logger.error(`could not log ${level} message ${message}, reason: device with id: ${deviceId} not found`)
-            return
-        }
-        return new db.deviceLog({
-            status: level,
-            description: message,
-            device: device
-        }).save()
-    } catch (err) {
-        context.logger.error(`could not log ${level} message ${message} to device ${deviceId}`, err)
-    }
-}
-
 exports.setOnline = async (device, context) => {
     let id = device.id || device
 
     let log = context.logger.start({ location: 'setOnline', device: id })
 
     device = await db.device.findById(id)
+
+    let oldStatus = device.status
 
     if (device.status === 'disabled') {
         let error = 'DEVICE_DISABLED'
@@ -95,7 +79,13 @@ exports.setOnline = async (device, context) => {
     }
     device.status = 'online'
     device.lastSeen = new Date()
-    return device.save()
+    await device.save()
+
+    if (device.status !== oldStatus) {
+        await offline.queue('device', device.status, device, context)
+    }
+
+    return device
 }
 
 exports.setOffline = async (device, context) => {
@@ -104,6 +94,8 @@ exports.setOffline = async (device, context) => {
     let log = context.logger.start({ location: 'setOnline', device: id })
 
     device = await db.device.findById(id)
+
+    let oldStatus = device.status
 
     if (device.status === 'disabled') {
         let error = 'DEVICE_DISABLED'
@@ -116,7 +108,14 @@ exports.setOffline = async (device, context) => {
     }
 
     device.status = 'offline'
-    return device.save()
+
+    await device.save()
+
+    if (device.status !== oldStatus) {
+        await offline.queue('device', device.status, device, context)
+    }
+
+    return device
 }
 
 exports.setLastSyncTime = async (id, date, context) => {
@@ -152,7 +151,7 @@ exports.create = async (model, context) => {
         tenant: context.tenant
     })
 
-    await set(device, model)
+    await set(device, model, context)
     await device.save()
     await offline.queue('device', 'create', device, context)
     return device
@@ -160,7 +159,7 @@ exports.create = async (model, context) => {
 
 exports.update = async (id, model, context) => {
     let device = await exports.get(id, context)
-    await set(device, model)
+    await set(device, model, context)
     await device.save()
     await offline.queue('device', 'update', device, context)
     return device

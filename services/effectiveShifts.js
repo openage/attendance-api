@@ -4,28 +4,6 @@ const employees = require('../services/employees')
 const dates = require('../helpers/dates')
 const shiftTypes = require('../services/shift-types')
 
-var createEffectiveShift = async (data) => {
-    let effectiveShiftType = await db.effectiveShift.findOne({
-        employee: data.employee,
-        date: data.date,
-        shiftType: data.shiftType
-    })
-    if (!effectiveShiftType) {
-        return new db.effectiveShift(data).save()
-    }
-    return effectiveShiftType
-}
-
-exports.reset = async (context) => {
-    let employeeQuery = {
-        organization: context.organization.id,
-        status: 'active'
-    }
-
-    let employees = await db.employee.find(employeeQuery)
-        .populate('shiftType')
-}
-
 /**
  * {
  *   employee: {id: String},
@@ -56,7 +34,8 @@ exports.create = async (model, context) => {
         effectiveShift = new db.effectiveShift({
             employee: employee,
             date: date,
-            organization: context.organization
+            organization: context.organization,
+            tenant: context.tenant
         })
     }
 

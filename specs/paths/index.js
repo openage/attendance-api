@@ -158,6 +158,11 @@ const setActionDefaults = (action, options) => {
                     name: param
                 }
             }
+
+            if (!param.name) {
+                param.name = 'body'
+            }
+
             parameters.push(param)
         })
 
@@ -184,6 +189,10 @@ const setActionDefaults = (action, options) => {
                     name: 'body'
                 })
             }
+        }
+
+        if (!action.parameters.find(p => p.name === 'x-role-key')) {
+            action.parameters.push({ name: 'x-role-key' })
         }
 
         action.parameters.forEach(param => {

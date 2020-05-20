@@ -1,48 +1,82 @@
 const db = require('../models')
-exports.get = async (query, context) => {
+const userService = require('./employees')
+const directory = require('@open-age/directory-client')
+const populate = 'shiftType supervisor'
+
+exports.get = async (query, context, create = true) => {
     context.logger.silly('services/employees:get')
+
+    if (!query) {
+        return
+    }
+
     let where = {
         organization: context.organization
     }
+    let user
+
+    if (query._bsontype === 'ObjectID') {
+        query = {
+            id: query.toString()
+        }
+    }
+
     if (typeof query === 'string') {
         if (query === 'my') {
             query = context.user.id
         }
         if (query.isObjectId()) {
-            return db.employee.findById(query).populate('shiftType supervisor')
+            user = await db.user.findById(query).populate(populate)
+        } else {
+            where.code = query
+            user = await db.user.findOne(where).populate(populate)
         }
-        where.code = query
-        return db.employee.findOne(where).populate('shiftType supervisor')
-    }
-    if (query.id) {
+    } else if (query.id) {
         if (query.id === 'my') {
             query.id = context.user.id
         }
-
-        return db.employee.findById(query._bsontype === 'ObjectID' ? query.toString() : query.id).populate('supervisor')
-    }
-
-    let user
-    if (query.code) {
-        user = await db.employee.findOne({
-            organization: context.organization,
-            code: query.code
-        }).populate('shiftType supervisor')
+        user = await db.user.findById(query.id).populate(populate)
     }
 
     if (!user && query.role && query.role.id) {
-        user = await db.employee.findOne({
+        user = await db.user.findOne({
             organization: context.organization,
             'role.id': query.role.id
-        }).populate('shiftType supervisor')
+        }).populate(populate)
+    }
+
+    if (!user && query.trackingId) {
+        user = await db.user.findOne({
+            trackingId: query.trackingId,
+            organization: context.organization
+        }).populate(populate)
+    }
+
+    if (!user && query.code) {
+        if (query.code === 'my') {
+            query.code = context.user.code
+        }
+        user = await db.user.findOne({
+            organization: context.organization,
+            code: query.code.toLowerCase()
+        }).populate(populate)
     }
 
     if (!user && query.biometricCode) {
-        user = await db.employee.findOne({
+        user = await db.user.findOne({
             organization: context.organization,
             biometricCode: query.biometricCode,
             status: 'temp'
-        }).populate('shiftType supervisor')
+        }).populate(populate)
+    }
+
+    if (create) {
+        if (!user) {
+            let directoryEmployee = await directory.employees.get(query, context)
+            if (directoryEmployee) {
+                user = await userService.create(directoryEmployee, context, false)
+            }
+        }
     }
 
     return user
@@ -153,13 +187,13 @@ exports.search = async (query, paging, context) => {
     const where = buildWhere(query, context)
 
     if (paging && paging.limit) {
-        return db.employee.find(where)
+        return db.user.find(where)
             .sort({
                 name: 1
             })
             .skip(paging.skip).limit(paging.limit)
     } else {
-        return db.employee.find(where)
+        return db.user.find(where)
             .sort({
                 name: 1
             })
@@ -169,5 +203,5 @@ exports.search = async (query, paging, context) => {
 exports.count = async (query, context) => {
     const where = buildWhere(query, context)
 
-    return db.employee.find(where).count()
+    return db.user.find(where).count()
 }
