@@ -4,6 +4,7 @@ const employeeService = require('../services/employees')
 const attendanceService = require('../services/attendances')
 const employeeGetter = require('../services/employee-getter')
 const moment = require('moment')
+const pager = require('../helpers/paging')
 
 exports.get = async (req) => {
     let employee = await employeeGetter.get(req.params.id, req.context)
@@ -76,12 +77,7 @@ exports.merge = async (req) => {
 }
 
 exports.search = async (req, res) => {
-    let PageNo = Number(req.query.pageNo)
-    let pageSize = Number(req.query.pageSize)
-    let toPage = (PageNo || 1) * (pageSize || 10)
-    let fromPage = toPage - (pageSize || 10)
-    let pageLmt = (pageSize || 10)
-    let totalRecordsCount = 0
+    let paging = pager.extract(req)
 
     let query = {
         status: 'active',
@@ -109,13 +105,28 @@ exports.search = async (req, res) => {
 
     let count = await db.employee.find(query).count()
     let employees = await db.employee.find(query).populate('shiftType supervisor').sort({ name: 1 })
-        .skip(fromPage).limit(pageLmt)
+        .skip(paging.skip).limit(paging.limit)
 
     for (const employee of employees) {
         employee.attendance = await attendanceService.getAttendanceByDate(req.query.date, employee, {}, req.context)
     }
 
-    return res.page(mapper.toSearchModel(employees), pageLmt, PageNo, count)
+    let pagedItems = {
+        items: employees.map(i => {
+            return (mapper.toSummary || mapper.toModel)(i, req.context)
+        }),
+        total: count || employees.length
+    }
+
+    if (paging) {
+        pagedItems.skip = paging.skip
+        pagedItems.limit = paging.limit
+        pagedItems.pageNo = paging.pageNo
+    }
+
+    return pagedItems
+
+    // return res.page(mapper.toSearchModel(employees), pageLmt, PageNo, count)
 }
 
 exports.update = async (req) => {

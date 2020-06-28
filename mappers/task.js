@@ -38,7 +38,5 @@ exports.toModel = (entity, context) => {
 }
 
 exports.toSearchModel = (entities, context) => {
-    return entities.map((entity) => {
-        return exports.toSearchModel(entities, context)
-    })
+    return entities.map((entity) => this.toModel(entity, context))
 }

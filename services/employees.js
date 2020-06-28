@@ -175,7 +175,12 @@ const set = async (entity, model, context) => {
     }
 
     if (model.meta) {
-        entity.meta = model.meta // this will be set by the incoming hook from master data
+        // this will be set by the incoming hook from master data
+        entity.meta = entity.meta || {}
+        Object.getOwnPropertyNames(model.meta).forEach(key => {
+            entity.meta[key] = model.meta[key]
+        })
+        entity.markModified('meta')
 
         if (entity.meta.biometricCode && !model.biometricCode) {
             model.biometricCode = entity.meta.biometricCode

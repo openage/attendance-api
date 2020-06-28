@@ -77,6 +77,8 @@ api.syncTimeLogs = async (req) => {
         device: req.params.deviceId,
         ipAddress: ip.getIpAddress(req)
     }, req.context)
+
+    return 'attendance will be updated soon'
 }
 
 module.exports = api

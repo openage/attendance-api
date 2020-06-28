@@ -633,7 +633,7 @@ const calculateStatus = (attendance, options, context) => {
         summary.status = attendanceStates.present
     }
 
-    if (summary.status == attendanceStates.present) {
+    if (summary.status === attendanceStates.present) {
         summary.first = 'P'
         summary.second = 'P'
     }

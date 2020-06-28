@@ -151,7 +151,6 @@ exports.toTeamSummary = (entities, context) => {
         return model
     })
 }
-
 exports.monthlySummary = (entity, context) => {
     var model = {
         id: entity._id.toString(),

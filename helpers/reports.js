@@ -41,7 +41,7 @@ const extraWorkDetails = attendance => {
                 timeDetails.extraHours = attendance.hoursWorked - timeDetails.shiftHours
                 timeDetails.extraMinutes = attendance.minsWorked
             }
-            if (timeDetails.shiftHours > hoursWorked && (!hoursWorked == 0)) {
+            if (timeDetails.shiftHours > hoursWorked && (!hoursWorked === 0)) {
                 timeDetails.shortHours = timeDetails.shiftHours - (attendance.hoursWorked + 1)
                 timeDetails.shortMinutes = 60 - attendance.minsWorked
             }

@@ -105,7 +105,7 @@ exports.toModel = (entity, context) => {
         }
     }
 
-    if (entity.supervisor && entity.supervisor.status == 'active') {
+    if (entity.supervisor && entity.supervisor.status === 'active') {
         if (entity.supervisor._doc) {
             model.supervisor = {
                 name: entity.supervisor.name,

@@ -558,60 +558,60 @@ exports.search = async (params, pageInput, context) => {
 
         if (params.employee.userTypes) {
             query['employeeModel.userType'] = {
-                $in: params.employee.userTypes.map(i => i.code.toLowerCase())
+                $in: params.employee.userTypes.map(i => (i.name || i).toLowerCase())
             }
         }
 
         if (params.employee.departments) {
             query['employeeModel.department'] = {
-                $in: params.employee.departments.map(i => i.name)
+                $in: params.employee.departments.map(i => i.name || i)
             }
         }
         if (params.employee.divisions) {
             query['employeeModel.division'] = {
-                $in: params.employee.divisions.map(i => i.name)
+                $in: params.employee.divisions.map(i => i.name || i)
             }
         }
 
         if (params.employee.designations) {
             query['employeeModel.designation'] = {
-                $in: params.employee.designations.map(i => i.name)
+                $in: params.employee.designations.map(i => i.name || i)
             }
         }
 
         if (params.employee.contractors) {
             query['employeeModel.contractor'] = {
-                $in: params.employee.contractors.map(i => i.name)
+                $in: params.employee.contractors.map(i => i.name || i)
             }
         }
     }
 
     if (params.userTypes) {
         query['employeeModel.userType'] = {
-            $in: params.userTypes.map(i => i.code.toLowerCase())
+            $in: params.userTypes.map(i => (i.code || i).toLowerCase())
         }
     }
 
     if (params.departments) {
         query['employeeModel.department'] = {
-            $in: params.departments.map(i => i.name)
+            $in: params.departments.map(i => i.name || i)
         }
     }
     if (params.divisions) {
         query['employeeModel.division'] = {
-            $in: params.divisions.map(i => i.name)
+            $in: params.divisions.map(i => i.name || i)
         }
     }
 
     if (params.designations) {
         query['employeeModel.designation'] = {
-            $in: params.designations.map(i => i.name)
+            $in: params.designations.map(i => i.name || i)
         }
     }
 
     if (params.contractors) {
         query['employeeModel.contractor'] = {
-            $in: params.contractors.map(i => i.name)
+            $in: params.contractors.map(i => i.name || i)
         }
     }
 

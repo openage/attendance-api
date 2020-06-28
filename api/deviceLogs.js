@@ -18,5 +18,7 @@ exports.create = async (req) => {
             break
     }
 
-    req.context.logger[level](req.body.description, { device: req.body.status })
+    req.context.logger[level](req.body.description, { device: req.body.deviceId || req.body.device })
+
+    return 'done'
 }

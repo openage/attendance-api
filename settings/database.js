@@ -7,8 +7,14 @@ module.exports.configure = function (logger) {
     mongoose.Promise = global.Promise
 
     let connect = function () {
+        let config = JSON.parse(JSON.stringify(dbConfig))
+
+        if (config.options) {
+            config.options.promiseLibrary = global.Promise
+        }
+
         log.info('connecting to', dbConfig)
-        mongoose.connect(dbConfig.host)
+        mongoose.connect(config.host, config.options)
     }
 
     connect()
@@ -20,11 +26,11 @@ module.exports.configure = function (logger) {
     })
 
     db.on('error', function (err) {
-        log.error('Mongoose default connection error: ' + err)
+        log.error('connection error: ' + err)
     })
 
     db.on('disconnected', function () {
-        log.info('Again going to connect DB')
+        log.info('connecting again')
         connect()
     })
 

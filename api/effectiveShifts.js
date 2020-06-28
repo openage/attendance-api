@@ -34,7 +34,7 @@ exports.update = async (req) => {
     if (!effectiveShift) {
         effectiveShift = new db.effectiveShift({
             date: date,
-            employee: req.params.id,
+            employee: employee.id,
             organization: req.context.organization.id,
             supervisor: req.context.user.id
         })

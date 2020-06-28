@@ -196,21 +196,21 @@ exports.getMonthlySummary = async (req) => {
     }
 
     if (req.query.departments) {
-        params.departments = req.query.departments.split(',')
+        params.employee.departments = req.query.departments.split(',')
     }
 
     if (req.query.designations) {
-        params.designations = req.query.designations.split(',')
+        params.employee.designations = req.query.designations.split(',')
     }
     if (req.query.userTypes) {
-        params.userTypes = req.query.userTypes.split(',')
+        params.employee.userTypes = req.query.userTypes.split(',')
     }
     if (req.query.divisions) {
-        params.divisions = req.query.divisions.split(',')
+        params.employee.divisions = req.query.divisions.split(',')
     }
 
     if (req.query.contractors) {
-        params.contractors = req.query.contractors.split(',')
+        params.employee.contractors = req.query.contractors.split(',')
     }
 
     pageInput = pageInput || {}

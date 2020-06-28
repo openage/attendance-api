@@ -30,7 +30,7 @@ const set = async (entity, model, context) => {
     }
 
     if (model.machine) {
-        if (typeof model.machine == 'object') {
+        if (typeof model.machine === 'object') {
             entity.machine = model.machine.id
         } else {
             entity.machine = model.machine

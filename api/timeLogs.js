@@ -17,7 +17,7 @@ exports.downloadSyncSheet = (req, res) => {
 const bulk = async (req) => {
     for (const item of req.body.items) {
         req.context.logger.debug(item)
-        if (item.employee == 'my') {
+        if (item.employee === 'my') {
             item.employee = req.context.user.id
         }
         req.context.logger.debug(item.employee)

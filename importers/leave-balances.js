@@ -12,7 +12,12 @@ const columnMaps = {
     }, {
         key: 'co',
         label: 'Compensatory Off'
-    }, {
+    },
+    {
+        key: 'od',
+        label: 'On Duty'
+    }
+        , {
         key: 'el',
         label: 'Earned Leave'
     }, {
@@ -58,6 +63,13 @@ exports.config = async (req, options) => {
                 model.leaveCodes.push({
                     key: 'cl',
                     value: row.cl
+                })
+            }
+
+            if (row.od) {
+                model.leaveCodes.push({
+                    key: 'od',
+                    value: row.od
                 })
             }
 

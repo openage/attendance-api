@@ -31,7 +31,7 @@ exports.toModel = (entity, context) => {
         return
     }
 
-    if (!entity._doc) {
+    if (!entity._doc && !entity.code) {
         return {
             id: entity.toString()
         }
